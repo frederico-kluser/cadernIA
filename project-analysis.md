@@ -105,7 +105,7 @@ The project is a React SPA in `app/`. The root `README.md` is the primary public
 Based on the above map, the minimal high-value skill set is:
 
 1. **project-router** (router) — mandatory single entry point.
-2. **react-vite-cadernia** (knowledge) — stack-specific conventions: path alias, build commands, strict TS rules, ESLint flat config, Tailwind/shadcn theming, React 19 patterns.
+2. **react-vite-ghostwriter** (knowledge) — stack-specific conventions: path alias, build commands, strict TS rules, ESLint flat config, Tailwind/shadcn theming, React 19 patterns.
 3. **ghost-editor** (task) — how to modify the ghost autocomplete, suggestion cache, and OpenAI completion flow.
 4. **notepad-3d** (task) — how to work with the Three.js scene, `PageTexture`, flip/tear animations, and the editor overlay positioning.
 5. **local-persistence** (task) — IndexedDB project/attachment schema, migration rules, `crypto.randomUUID()` secure-context requirement, legacy `localStorage` migration.

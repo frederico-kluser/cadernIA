@@ -349,7 +349,10 @@ body,
   word-break: break-word;
   overflow-wrap: break-word;
   tab-size: 2;
-  padding: calc(var(--editor-lh, 28px) * 3.5) 24px 60px 78px;
+  /* topo = (k + 0.5) * lh mantém a primeira linha centralizada entre as réguas
+     em qualquer tamanho de fonte; mirror e textarea compartilham o valor para
+     o cursor não descolar do texto visível */
+  padding: calc(var(--editor-lh, 28px) / 2) 24px 60px 78px;
   margin: 0;
   border: 0;
   box-sizing: border-box;
@@ -373,7 +376,6 @@ body,
   );
   background-position: 0 calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.334);
   background-size: 100% var(--editor-lh, 28px);
-  padding-top: 24px;
 }
 
 .ghost-editor-mirror .ghost-suggestion {

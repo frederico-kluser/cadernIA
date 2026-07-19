@@ -9,7 +9,7 @@
 
 ## Knowledge
 
-- [`working-in-cadernia`](working-in-cadernia/SKILL.md) — Stack conventions: React 19, Vite, Tailwind, shadcn/ui, TypeScript strictness, ESLint, path aliases, build commands.
+- [`working-in-ghostwriter`](working-in-ghostwriter/SKILL.md) — Stack conventions: React 19, Vite, Tailwind, shadcn/ui, TypeScript strictness, ESLint, path aliases, build commands.
 
 ## Task skills
 

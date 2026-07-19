@@ -44,7 +44,7 @@ The user wants to change how voice input is handled, how Whisper transcripts are
 
 ## Procedure
 
-1. Load `working-in-cadernia` first.
+1. Load `working-in-ghostwriter` first.
 2. Load `editing-ghost-editor` if ghost-autocomplete behavior is also changing.
 3. Make changes in `lib/openai.ts` for backend behavior and in `components/AiEditDialog.tsx` / `pages/Home.tsx` for UI/flow.
 4. Run `yarn build` in the project root.

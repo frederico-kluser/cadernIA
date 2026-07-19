@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 APP="$ROOT/app"
 REPORT="$ROOT/validation-report.md"
-SKILL="$ROOT/.agents/skills/working-in-cadernia/SKILL.md"
+SKILL="$ROOT/.agents/skills/working-in-ghostwriter/SKILL.md"
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
@@ -21,7 +21,7 @@ echo
 
 # Positive routing cases
 declare -A POSITIVE
-POSITIVE[working-in-cadernia]="vite config tailwind shadcn"
+POSITIVE[working-in-ghostwriter]="vite config tailwind shadcn"
 POSITIVE[editing-ghost-editor]="ghost autocomplete suggestion cache Tab accept"
 POSITIVE[editing-notepad-3d]="Three.js NotepadScene PageTexture flip animation"
 POSITIVE[editing-local-persistence]="IndexedDB attachment migration localStorage"
@@ -48,7 +48,7 @@ echo
 # Learning: Vite dev port is 3000, not 5173.
 if ! grep -q "port 3000" "$SKILL"; then
   # Refresh validation artifact so the write gate allows the edit.
-  printf '{"validated_at":%s,"result":"pass"}\n' "$(date +%s)" > "$ROOT/.agents/skills/working-in-cadernia/.validation.json"
+  printf '{"validated_at":%s,"result":"pass"}\n' "$(date +%s)" > "$ROOT/.agents/skills/working-in-ghostwriter/.validation.json"
   # Apply a lean, scoped, provenanced update.
   sed -i '/### Stack gotchas/a\\n- The README says dev URL is `http://localhost:5173`, but `vite.config.ts:11` sets port **3000**.' "$SKILL"
   echo "- Added verified learning about Vite dev port (provenance: vite.config.ts:11)."
@@ -64,14 +64,14 @@ echo "## 3. Evolution reject case"
 echo
 # Wrong/over-generalized learning: "All components must use named exports" contradicts existing default-export convention.
 # Simulate an unvalidated write attempt by setting the validation artifact to fail.
-printf '{"validated_at":%s,"result":"fail"}\n' "$(date +%s)" > "$ROOT/.agents/skills/working-in-cadernia/.validation.json"
+printf '{"validated_at":%s,"result":"fail"}\n' "$(date +%s)" > "$ROOT/.agents/skills/working-in-ghostwriter/.validation.json"
 if bash "$ROOT/.agents/skills/scripts/gate-skill-write.sh" Write "$SKILL" >/dev/null 2>&1; then
   fail "write gate allowed unverified/failing SKILL.md write"
 else
   echo "- Write gate correctly rejected unverified/failing update (exit 2)."
 fi
 # Restore green validation.
-printf '{"validated_at":%s,"result":"pass"}\n' "$(date +%s)" > "$ROOT/.agents/skills/working-in-cadernia/.validation.json"
+printf '{"validated_at":%s,"result":"pass"}\n' "$(date +%s)" > "$ROOT/.agents/skills/working-in-ghostwriter/.validation.json"
 
 echo
 

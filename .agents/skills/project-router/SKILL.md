@@ -40,7 +40,7 @@ IMPORTANT: all communication with the user is ALWAYS in BRAZILIAN PORTUGUESE.
 
 ## Skill catalog quick reference
 
-- `working-in-cadernia` — stack conventions (React/Vite/Tailwind/shadcn/TS/ESLint).
+- `working-in-ghostwriter` — stack conventions (React/Vite/Tailwind/shadcn/TS/ESLint).
 - `editing-ghost-editor` — ghost autocomplete, suggestion cache, OpenAI completion.
 - `editing-notepad-3d` — Three.js scene, page texture, flip/tear animations.
 - `editing-local-persistence` — IndexedDB, attachments, migration, export, settings.

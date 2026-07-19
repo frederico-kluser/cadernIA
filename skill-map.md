@@ -18,7 +18,7 @@ The catalog is intentionally small. Routing degrades with too many skills, and m
 
 | Name | Type | Triggers | Verification signal |
 |---|---|---|---|
-| `working-in-cadernia` | knowledge | Any task touching the React/Vite/Tailwind/shadcn stack, build, lint, or file layout. | `yarn lint` and `yarn build` in the project root. |
+| `working-in-ghostwriter` | knowledge | Any task touching the React/Vite/Tailwind/shadcn stack, build, lint, or file layout. | `yarn lint` and `yarn build` in the project root. |
 
 ### 2.3 Task skills (3)
 
@@ -39,10 +39,10 @@ The catalog is intentionally small. Routing degrades with too many skills, and m
 
 ```
 project-router
-├── working-in-cadernia          (load first for any project change)
-├── editing-ghost-editor         (depends on working-in-cadernia)
-├── editing-notepad-3d           (depends on working-in-cadernia)
-├── editing-local-persistence    (depends on working-in-cadernia)
+├── working-in-ghostwriter          (load first for any project change)
+├── editing-ghost-editor         (depends on working-in-ghostwriter)
+├── editing-notepad-3d           (depends on working-in-ghostwriter)
+├── editing-local-persistence    (depends on working-in-ghostwriter)
 ├── evolving-skills              (invoked at task end; can propose new skills)
 └── consolidating-skills         (scheduled; reads/writes all skills)
 ```
@@ -52,9 +52,9 @@ project-router
 
 ## 4. Granularity justification
 
-- **One stack skill** (`working-in-cadernia`) covers React 19, Vite, Tailwind, shadcn, TypeScript strictness, ESLint, and path aliases. Splitting these would create tiny, overlapping skills and force the router to guess between them.
+- **One stack skill** (`working-in-ghostwriter`) covers React 19, Vite, Tailwind, shadcn, TypeScript strictness, ESLint, and path aliases. Splitting these would create tiny, overlapping skills and force the router to guess between them.
 - **Three domain task skills** map directly to the three high-risk, high-complexity areas discovered in Phase 1. They are large enough to carry meaningful procedural memory and small enough to avoid a catch-all "frontend" skill.
-- **No separate skills for** markdown preview, voice, API key dialog, or lock screen at launch. These are either simple consumers of the domain skills or unlikely to change independently. The router can load `working-in-cadernia` plus the relevant domain skill for them.
+- **No separate skills for** markdown preview, voice, API key dialog, or lock screen at launch. These are either simple consumers of the domain skills or unlikely to change independently. The router can load `working-in-ghostwriter` plus the relevant domain skill for them.
 - **Two meta skills** keep evolution and GC separate: evolution is per-task and fast; consolidation is periodic and heavy.
 
 ## 5. Verification signal selection
