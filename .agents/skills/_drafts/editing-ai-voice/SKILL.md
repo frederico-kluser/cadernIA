@@ -36,6 +36,12 @@ The user wants to change how voice input is handled, how Whisper transcripts are
 - The AI-edit modal always shows a preview before applying; the user must click **Aplicar**.
 - If text is selected when the modal opens, the user can choose to apply the instruction only to the selection.
 
+### Microphone UI/UX
+
+- `recState` cycles through `'idle' | 'recording' | 'transcribing'` and drives both the desktop toolbar mic button and the mobile floating action button (`pages/Home.tsx:1359@9929bd1`, `pages/Home.tsx:1741@9929bd1`).
+- Recording state uses `rec-pulse` plus `recording-ring` (a red expanding ring) for a clear visual cue; transcribing state uses `transcribing-pulse` together with the spinner (`src/index.css:782@9929bd1`).
+- The recording-start toast is positioned at `top-center` so it never covers the mobile bottom FAB that stops the recording (`pages/Home.tsx:938@9929bd1`).
+
 ### Gotchas
 
 - `classifyUtterance` falls back to `{ type: 'transcription', payload: transcript }` if the model returns malformed JSON.
