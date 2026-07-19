@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { forwardRef, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 export type LeaveDirection = 'next' | 'prev'
 export type LeaveKind = 'slide' | 'tear'
@@ -20,13 +20,10 @@ interface PageSheetProps {
 
 const HOLES = 13
 
-export default function PageSheet({
-  header,
-  children,
-  fontSize,
-  leaving,
-  onLeavingEnd,
-}: PageSheetProps) {
+const PageSheet = forwardRef<HTMLDivElement, PageSheetProps>(function PageSheet(
+  { header, children, fontSize, leaving, onLeavingEnd },
+  ref,
+) {
   const busy = Boolean(leaving)
   const pageRef = useRef<HTMLDivElement>(null)
   const lastHeightRef = useRef<number>(0)
@@ -76,7 +73,14 @@ export default function PageSheet({
         {/* folha atual (sempre visível) */}
         <div
           className={`page-current ${leaving ? `entering ${leaving.direction}` : ''}`}
-          ref={pageRef}
+          ref={(node) => {
+            pageRef.current = node
+            if (typeof ref === 'function') {
+              ref(node)
+            } else if (ref) {
+              ref.current = node
+            }
+          }}
         >
           {renderHoles()}
           <div className="page-header">{header}</div>
@@ -103,4 +107,6 @@ export default function PageSheet({
       </div>
     </div>
   )
-}
+})
+
+export default PageSheet
