@@ -10,8 +10,8 @@
     {
       "id": 2,
       "name": "Skill map",
-      "done": false,
-      "gate_passed": false,
+      "done": true,
+      "gate_passed": true,
       "artifact": "skill-map.md"
     },
     {
@@ -36,6 +36,6 @@
       "artifact": "validation-report.md"
     }
   ],
-  "updated_by": "phase-1-project-analysis",
+  "updated_by": "phase-2-skill-map",
   "stop_hook_active": true
 }
