@@ -74,7 +74,8 @@ body,
   position: relative;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   background:
     radial-gradient(1100px 520px at 50% -8%, rgba(189, 147, 249, 0.08), transparent 60%),
     radial-gradient(800px 420px at 85% 108%, rgba(139, 233, 253, 0.05), transparent 60%),
@@ -84,9 +85,9 @@ body,
 .page-perspective {
   position: relative;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 12px;
   perspective: 1400px;
@@ -95,15 +96,17 @@ body,
 .page-stack {
   position: relative;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   transform-style: preserve-3d;
 }
 
 /* folha atual */
 .page-current {
-  position: absolute;
-  inset: 0;
+  position: relative;
   z-index: 1;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(180deg, #2e303d 0%, #282a36 26%);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.22);
 }
@@ -157,18 +160,21 @@ body,
     0 0 0 1.5px rgba(0, 0, 0, 0.25);
 }
 
-/* cabeçalho da folha: título e data SOBRE a primeira linha pautada */
+/* cabeçalho da folha: título e data fixos no topo, protegendo o conteúdo */
 .page-header {
-  position: absolute;
-  top: calc(var(--editor-lh, 28px) * 2.5 - 8px);
-  left: 78px;
-  right: 20px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 6;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  padding: calc(var(--editor-lh, 28px) * 1.5) 24px 12px 78px;
   pointer-events: none;
+  background: linear-gradient(180deg, #2e303d 0%, #282a36 90%);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
 }
 .page-header > * {
   pointer-events: auto;
@@ -227,8 +233,11 @@ body,
 }
 
 .page-body {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* folha saindo durante a animação */
@@ -239,6 +248,7 @@ body,
   transform-style: preserve-3d;
   background: linear-gradient(180deg, #2e303d 0%, #282a36 26%);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.22);
+  height: var(--leaving-height, 100%);
 }
 .page-leave-front,
 .page-leave-back {
@@ -318,10 +328,14 @@ body,
 /* ============ Editor com ghost text (na folha) ============ */
 .ghost-editor-wrap {
   position: relative;
-  height: 100%;
+  flex: 1;
+  min-height: 100%;
   width: 100%;
-  overflow: hidden;
+  display: grid;
   background: transparent;
+}
+.ghost-editor-wrap > * {
+  grid-area: 1 / 1 / 2 / 2;
 }
 
 .ghost-editor-mirror,
@@ -340,13 +354,12 @@ body,
   border: 0;
   box-sizing: border-box;
   width: 100%;
-  height: 100%;
-  overflow: auto;
 }
 
 .ghost-editor-mirror {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  min-height: 100%;
+  height: auto;
   color: var(--dracula-fg);
   pointer-events: none;
   z-index: 1;
@@ -360,7 +373,6 @@ body,
   );
   background-position: 0 calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.334);
   background-size: 100% var(--editor-lh, 28px);
-  background-attachment: local;
 }
 
 .ghost-editor-mirror .ghost-suggestion {
@@ -372,14 +384,16 @@ body,
 }
 
 .ghost-editor-input {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  min-height: 100%;
+  height: 100%;
   background: transparent;
   color: transparent;
   caret-color: var(--dracula-fg);
   resize: none;
   outline: none;
   z-index: 2;
+  overflow: hidden;
   -webkit-text-fill-color: transparent;
 }
 
@@ -396,14 +410,24 @@ body,
 
 /* ============ Markdown preview (sobre a folha) ============ */
 .md-preview {
-  position: absolute;
-  inset: 0;
-  overflow: auto;
-  padding: calc(var(--editor-lh, 28px) * 3) 28px 60px 78px;
+  position: relative;
+  flex: 1;
+  min-height: 100%;
+  width: 100%;
+  padding: calc(var(--editor-lh, 28px) * 3.5) 28px 60px 78px;
   font-size: 16px;
   line-height: 1.7;
   color: var(--dracula-fg);
-  background: transparent;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      var(--rule-line) 0,
+      var(--rule-line) 1px,
+      transparent 1px,
+      transparent var(--editor-lh, 28px)
+    );
+  background-position: 0 calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.334);
+  background-size: 100% var(--editor-lh, 28px);
 }
 .md-preview h1,
 .md-preview h2,
