@@ -38,6 +38,7 @@ The user wants to change how notes, attachments, settings, or the API key are st
 ### API key and settings
 
 - API key is stored in `localStorage` under `noteghost_api_key` (`pages/Home.tsx:90,244-247`).
+- GitHub PAT is stored in `localStorage` under `noteghost_github_pat` (`pages/Home.tsx:119-120,211-213`) and is validated on demand via the GitHub REST API (`lib/github.ts:48-64`).
 - The key is validated against `https://api.openai.com/v1/models` at startup (`lib/openai.ts:25-36`, `pages/Home.tsx:235-242`).
 - The app stays locked until validation passes (`components/LockScreen.tsx`).
 
