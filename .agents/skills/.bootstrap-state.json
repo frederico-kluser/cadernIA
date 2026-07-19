@@ -17,8 +17,8 @@
     {
       "id": 3,
       "name": "Generate knowledge and task skills",
-      "done": false,
-      "gate_passed": false,
+      "done": true,
+      "gate_passed": true,
       "artifact": "skills/catalog.md"
     },
     {
@@ -36,6 +36,6 @@
       "artifact": "validation-report.md"
     }
   ],
-  "updated_by": "phase-2-skill-map",
+  "updated_by": "phase-3-skills-generated",
   "stop_hook_active": true
 }
