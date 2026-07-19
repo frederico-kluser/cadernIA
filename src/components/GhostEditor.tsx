@@ -21,6 +21,10 @@ interface GhostEditorProps {
   onAcceptSuggestion: () => void
   onDismissSuggestion: () => void
   onManualTrigger: () => void
+  onUndo?: () => void
+  onRedo?: () => void
+  canUndo?: boolean
+  canRedo?: boolean
   fontSize: number
 }
 
@@ -51,6 +55,10 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
       onAcceptSuggestion,
       onDismissSuggestion,
       onManualTrigger,
+      onUndo,
+      onRedo,
+      canUndo,
+      canRedo,
       fontSize,
     },
     ref,
@@ -58,6 +66,7 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
     const taRef = useRef<HTMLTextAreaElement>(null)
     const mirrorRef = useRef<HTMLDivElement>(null)
     const pendingSelection = useRef<number | null>(null)
+    const acceptCooldownRef = useRef(false)
 
     useImperativeHandle(ref, () => ({
       insertAtCursor(text: string) {
@@ -153,9 +162,16 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
           }}
           onScroll={syncScroll}
           onKeyDown={(e) => {
+            if (e.repeat) return
+
             if (e.key === 'Tab') {
               e.preventDefault()
               if (suggestion) {
+                if (acceptCooldownRef.current) return
+                acceptCooldownRef.current = true
+                window.setTimeout(() => {
+                  acceptCooldownRef.current = false
+                }, 120)
                 onAcceptSuggestion()
               } else {
                 // Sem sugestão: Tab insere dois espaços, como num editor de código
@@ -176,6 +192,26 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
             if ((e.ctrlKey || e.metaKey) && (e.key === ' ' || e.key === 'Enter')) {
               e.preventDefault()
               onManualTrigger()
+              return
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+              if (e.shiftKey) {
+                if (canRedo) {
+                  e.preventDefault()
+                  onRedo?.()
+                }
+              } else if (canUndo) {
+                e.preventDefault()
+                onUndo?.()
+              }
+              return
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
+              if (canRedo) {
+                e.preventDefault()
+                onRedo?.()
+              }
+              return
             }
           }}
         />

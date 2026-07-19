@@ -30,6 +30,7 @@ interface ChatOptions {
   maxTokens?: number
   responseFormat?: { type: 'json_object' }
   signal?: AbortSignal
+  trim?: boolean
 }
 
 async function chatCompletion({
@@ -40,6 +41,7 @@ async function chatCompletion({
   maxTokens,
   responseFormat,
   signal,
+  trim = true,
 }: ChatOptions): Promise<string> {
   const reasoning = isReasoningModel(model)
   const body: Record<string, unknown> = {
@@ -70,7 +72,9 @@ async function chatCompletion({
   }
 
   const data = await res.json()
-  return (data.choices?.[0]?.message?.content ?? '').trim()
+  let content = data.choices?.[0]?.message?.content ?? ''
+  if (trim) content = content.trim()
+  return content
 }
 
 export async function validateApiKey(
@@ -148,7 +152,7 @@ function sanitizeCompletion(raw: string, beforeCursor: string): string {
     }
   }
 
-  return text
+  return text.trimEnd()
 }
 
 export async function fetchCompletion(req: CompletionRequest): Promise<string> {
@@ -162,6 +166,7 @@ export async function fetchCompletion(req: CompletionRequest): Promise<string> {
     temperature: 0.3,
     maxTokens: 180,
     signal: req.signal,
+    trim: false,
   })
   return sanitizeCompletion(text, req.beforeCursor)
 }
