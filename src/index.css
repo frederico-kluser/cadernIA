@@ -668,6 +668,25 @@ body,
   flex: none;
 }
 
+/*
+  Grupo da barra de ferramentas.
+  A HIG dá o único número duro da página: "Minimize the number of groups […]
+  In general, aim for a maximum of three." São exatamente três — Folha,
+  Escrita com IA e Exibição — e o grupo desenhado (fundo + borda) é o que
+  substitui os separadores de 1px, que não agrupavam coisa nenhuma: apenas
+  cortavam uma fileira contínua de quinze ícones em fatias arbitrárias.
+*/
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  padding: 2px;
+  border-radius: 11px;
+  border: 1px solid rgba(68, 71, 90, 0.55);
+  background: rgba(40, 42, 54, 0.55);
+}
+
 /* ============ Menu lateral (mobile) ============ */
 .drawer-section {
   padding: 14px 16px;

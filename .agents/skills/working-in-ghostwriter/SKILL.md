@@ -38,6 +38,8 @@ These are already guaranteed by config; point to the file rather than re-describ
 - **Import ordering** (conventional only): React hooks, third-party libs, `@/` aliases last. Large `lucide-react` imports are grouped.
 - **Styling mix**: Tailwind for layout/spacing; plain CSS in `src/index.css` for the notebook page, ghost editor layering, and 3D-stage textures.
 - **Dynamic CSS custom properties** need a type assertion because React's style type is strict: `style={{ ['--editor-lh' as string]: ... }}` (`src/components/GhostEditor.tsx:121`).
+- **`react-hooks/refs` é erro, não aviso**: o padrão comum `const ref = useRef(x); ref.current = x` no corpo do componente reprova o `yarn lint` ("Cannot update ref during render"). Refs-espelho precisam ser atribuídas dentro de um `useEffect` sem lista de dependências — ele roda após cada render, então handlers leem sempre o valor corrente (`src/hooks/useTour.ts`, `src/hooks/useGlobalShortcuts.ts`).
+- **Os tokens do shadcn não existem neste projeto**: `--background`, `--foreground`, `--primary`, `--border`, `--radius` etc. não estão definidos em lugar nenhum, então toda utilidade `bg-background`/`text-muted-foreground` emitida pelos 50+ arquivos de `src/components/ui/` resolve para `hsl()` inválido. Ao usar um primitivo do shadcn pela primeira vez (`kbd`, `command`, `tooltip`), é obrigatório sobrescrever as cores com hex Dracula literal, como o resto do app já faz.
 - **Inline handlers often cast `void`** to silence floating promises: `onClick={() => void requestCompletion(true)}` (`src/pages/Home.tsx:721`).
 - **shadcn/ui New York style, non-RSC, TSX**, base color `slate` — `components.json:3-5`.
 - **Marca centralizada em `src/lib/brand.ts`** (`LOGO_URL`). O app chama-se
