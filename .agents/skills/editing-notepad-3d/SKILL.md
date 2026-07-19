@@ -23,6 +23,7 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 - The editor (`.ghost-editor-wrap`) is a CSS Grid with the mirror in flow and the textarea overlaying it. The textarea height is set to its `scrollHeight` via `useLayoutEffect` so the editor grows with the text and has no internal scroll (`GhostEditor.tsx`).
 - The ruled-line background is applied to the mirror with default `background-attachment` (scroll), so it moves with the mirror as `.stage-wrap` scrolls. The baseline offset `calc(var(--editor-lh) / 2 + var(--editor-font-size) * 0.334)` must be preserved (`src/index.css`).
 - `Home.tsx` builds the page header as a memoized React node and passes it to `PageSheet` along with the current note content. On navigation it captures the old header and a static HTML mirror of the old content and hands them to `PageSheet` as the `leaving` animation payload (`pages/Home.tsx`).
+- `PageSheet` is a `forwardRef` component: the ref is attached to the current page element (`.page-current`), allowing parent code to snapshot or measure the rendered sheet (e.g. `html-to-image` export) (`components/PageSheet.tsx`).
 
 ### Key flow
 
