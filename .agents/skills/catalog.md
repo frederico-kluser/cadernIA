@@ -5,7 +5,7 @@
 
 ## Router
 
-- [`project-router`](project-router/SKILL.md) — Routes every task to the correct skills; asks clarifying questions in Portuguese; manages `TASK_PLAN.md`.
+- [`project-router`](project-router/SKILL.md) — Routes every task to the correct skills; never asks clarifying questions (assumes and documents in `TASK_PLAN.md`); always commits at task end.
 
 ## Knowledge
 
