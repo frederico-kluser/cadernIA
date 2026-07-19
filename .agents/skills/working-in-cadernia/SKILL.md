@@ -34,6 +34,7 @@ These are already guaranteed by config; point to the file rather than re-describ
 
 ### Project conventions (not enforced by tooling)
 
+
 - **Default exports for pages/feature components**, named exports for utilities and shadcn primitives (`App.tsx:4`, `pages/Home.tsx:99`, `components/ui/button.tsx:62`).
 - **Import ordering** (conventional only): React hooks, third-party libs, `@/` aliases last. Large `lucide-react` imports are grouped.
 - **Styling mix**: Tailwind for layout/spacing; plain CSS in `index.css` for the notebook page, ghost editor layering, and 3D-stage textures.

@@ -31,11 +31,11 @@
     {
       "id": 5,
       "name": "Validation",
-      "done": false,
-      "gate_passed": false,
+      "done": true,
+      "gate_passed": true,
       "artifact": "validation-report.md"
     }
   ],
-  "updated_by": "phase-4-router-evolution-hooks",
+  "updated_by": "phase-5-validation",
   "stop_hook_active": true
 }
