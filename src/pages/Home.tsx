@@ -8,6 +8,7 @@ import {
   CornerDownLeft,
   Download,
   Eye,
+  FileDown,
   FileText,
   FileType2,
   Github,
@@ -91,7 +92,7 @@ import {
   type Attachment,
   type Project,
 } from '@/lib/db'
-import { downloadNoteImage } from '@/lib/export'
+import { downloadNoteImage, downloadNotePdf } from '@/lib/export'
 
 interface Suggestion {
   text: string
@@ -351,6 +352,16 @@ export default function Home() {
       toast.success('Imagem da nota baixada.')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao gerar imagem da nota.')
+    }
+  }, [active])
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!active || !pageRef.current) return
+    try {
+      await downloadNotePdf(pageRef.current, active)
+      toast.success('PDF da nota baixado.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao gerar PDF da nota.')
     }
   }, [active])
 
@@ -938,6 +949,13 @@ export default function Home() {
                 Baixar como imagem (.png)
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() => void handleDownloadPdf()}
+                className="cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]"
+              >
+                <FileDown className="mr-2 h-4 w-4 text-[#ff5555]" />
+                Baixar como PDF (.pdf)
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => active && downloadNote(active, 'txt')}
                 className="cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]"
               >
@@ -1515,6 +1533,16 @@ export default function Home() {
               >
                 <Image className="h-5 w-5 text-[#ff79c6]" />
                 .png
+              </button>
+              <button
+                className="drawer-btn"
+                onClick={() => {
+                  void handleDownloadPdf()
+                  setDrawerOpen(false)
+                }}
+              >
+                <FileDown className="h-5 w-5 text-[#ff5555]" />
+                .pdf
               </button>
               <button
                 className="drawer-btn"
