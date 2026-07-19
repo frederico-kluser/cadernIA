@@ -12,6 +12,7 @@ import {
   FileType2,
   Ghost,
   Github,
+  HelpCircle,
   KeyRound,
   Loader2,
   Maximize2,
