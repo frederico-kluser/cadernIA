@@ -350,11 +350,11 @@ body,
   overflow-wrap: break-word;
   tab-size: 2;
   /* topo = (k + 0.5) * lh centra a *baseline* entre as réguas; o acréscimo de
-     0.25em desce o texto até o corpo das minúsculas ficar opticamente
+     0.375em desce o texto até o corpo das minúsculas ficar opticamente
      centralizado, e por ser relativo à fonte o ajuste vale em toda a faixa
      13-24. Mirror e textarea compartilham o valor para o cursor não descolar
      do texto visível. */
-  padding: calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.25)
+  padding: calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.375)
     24px 60px 78px;
   margin: 0;
   border: 0;
