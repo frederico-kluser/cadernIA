@@ -18,15 +18,15 @@ The catalog is intentionally small. Routing degrades with too many skills, and m
 
 | Name | Type | Triggers | Verification signal |
 |---|---|---|---|
-| `working-in-cadernia` | knowledge | Any task touching the React/Vite/Tailwind/shadcn stack, build, lint, or file layout. | `npm run lint` and `npm run build` in `app/`. |
+| `working-in-cadernia` | knowledge | Any task touching the React/Vite/Tailwind/shadcn stack, build, lint, or file layout. | `yarn lint` and `yarn build` in the project root. |
 
 ### 2.3 Task skills (3)
 
 | Name | Type | Triggers | Verification signal |
 |---|---|---|---|
-| `editing-ghost-editor` | task | Changes to ghost autocomplete, suggestion cache, OpenAI completion prompt, `Tab`/`Esc` behavior, or `GhostEditor.tsx`. | `npm run build` in `app/` + ghost-editor eval suite. |
-| `editing-notepad-3d` | task | Changes to `NotepadScene.tsx`, `PageTexture.tsx`, flip/tear animations, or the editor overlay positioning. | `npm run build` in `app/` + notepad-3d eval suite. |
-| `editing-local-persistence` | task | Changes to IndexedDB schema, project/attachment CRUD, migration, export, or `localStorage` settings. | `npm run build` in `app/` + local-persistence eval suite. |
+| `editing-ghost-editor` | task | Changes to ghost autocomplete, suggestion cache, OpenAI completion prompt, `Tab`/`Esc` behavior, or `GhostEditor.tsx`. | `yarn build` in project root + ghost-editor eval suite. |
+| `editing-notepad-3d` | task | Changes to `NotepadScene.tsx`, `PageTexture.tsx`, flip/tear animations, or the editor overlay positioning. | `yarn build` in project root + notepad-3d eval suite. |
+| `editing-local-persistence` | task | Changes to IndexedDB schema, project/attachment CRUD, migration, export, or `localStorage` settings. | `yarn build` in project root + local-persistence eval suite. |
 
 ### 2.4 Meta skills (2)
 
@@ -39,7 +39,7 @@ The catalog is intentionally small. Routing degrades with too many skills, and m
 
 ```
 project-router
-├── working-in-cadernia          (load first for any app change)
+├── working-in-cadernia          (load first for any project change)
 ├── editing-ghost-editor         (depends on working-in-cadernia)
 ├── editing-notepad-3d           (depends on working-in-cadernia)
 ├── editing-local-persistence    (depends on working-in-cadernia)
@@ -59,7 +59,7 @@ project-router
 
 ## 5. Verification signal selection
 
-- The project has **no tests**. Therefore skill updates rely on `npm run build` (TypeScript + Vite) and `npm run lint` (ESLint) as the primary external signals.
+- The project has **no tests**. Therefore skill updates rely on `yarn build` (TypeScript + Vite) and `yarn lint` (ESLint) as the primary external signals.
 - Each task skill carries a small **eval suite** (routing cases + behavior cases) to guard against regressions that build/lint cannot catch.
 - Meta skills rely on the **skill linter** (frontmatter, naming, token budget) and the **regression suite**.
 

@@ -3,7 +3,7 @@ name: editing-local-persistence
 description: Guides changes to IndexedDB storage, project/attachment schema, migrations, export, and localStorage settings. Use whenever the user touches lib/db.ts, attachment handling, API key storage, or legacy migration.
 metadata:
   type: task
-  verification_signal: npm run build in app/ + local-persistence eval suite
+  verification_signal: yarn build in project root + local-persistence eval suite
 ---
 # editing-local-persistence
 
@@ -58,7 +58,7 @@ The user wants to change how notes, attachments, settings, or the API key are st
 2. Identify whether the change touches schema, CRUD, migration, export, attachments, or settings.
 3. If changing the `Project`/`Attachment` shape, update `lib/db.ts` types, IndexedDB store handling, and all consumers.
 4. If bumping the DB version, write an `onupgradeneeded` migration; do not break existing stores.
-5. Run `npm run build` in `app/`.
+5. Run `yarn build` in the project root.
 6. Run the local-persistence eval suite (`scripts/eval-local-persistence.sh`).
 
 ## References
@@ -67,4 +67,4 @@ The user wants to change how notes, attachments, settings, or the API key are st
 
 ## <evolution>
 
-On task completion, run the <memory_pipeline>: if there is IMPORTANT and VERIFIED information to retain, update THIS SKILL.md DIRECTLY. Do NOT create learnings files. Do NOT self-merge anything that has not passed `npm run build` in `app/` and the local-persistence eval suite.
+On task completion, run the <memory_pipeline>: if there is IMPORTANT and VERIFIED information to retain, update THIS SKILL.md DIRECTLY. Do NOT create learnings files. Do NOT self-merge anything that has not passed `yarn build` in the project root and the local-persistence eval suite.

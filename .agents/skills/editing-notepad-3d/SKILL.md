@@ -3,7 +3,7 @@ name: editing-notepad-3d
 description: Guides changes to the Three.js notepad scene, page texture rendering, and flip/tear animations. Use whenever the user touches NotepadScene.tsx, PageTexture.tsx, Notepad.tsx, or the editor overlay positioning.
 metadata:
   type: task
-  verification_signal: npm run build in app/ + notepad-3d eval suite
+  verification_signal: yarn build in project root + notepad-3d eval suite
 ---
 # editing-notepad-3d
 
@@ -44,7 +44,7 @@ The user wants to change the 3D notebook visual, page-flip animation, page textu
 2. Determine whether the change affects the scene, the texture, the animation, or the overlay.
 3. If changing animation timing, update all three locations (CSS/timeout, `NotepadScene` durations, and the cleanup timeout).
 4. Verify the overlay still aligns after page flip by checking `onLayout` values.
-5. Run `npm run build` in `app/`.
+5. Run `yarn build` in the project root.
 6. Run the notepad-3d eval suite (`scripts/eval-notepad-3d.sh`).
 
 ## References
@@ -53,4 +53,4 @@ The user wants to change the 3D notebook visual, page-flip animation, page textu
 
 ## <evolution>
 
-On task completion, run the <memory_pipeline>: if there is IMPORTANT and VERIFIED information to retain, update THIS SKILL.md DIRECTLY. Do NOT create learnings files. Do NOT self-merge anything that has not passed `npm run build` in `app/` and the notepad-3d eval suite.
+On task completion, run the <memory_pipeline>: if there is IMPORTANT and VERIFIED information to retain, update THIS SKILL.md DIRECTLY. Do NOT create learnings files. Do NOT self-merge anything that has not passed `yarn build` in the project root and the notepad-3d eval suite.

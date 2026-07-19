@@ -2,12 +2,13 @@
 
 ## Commands
 
-All commands run from `app/`:
+All commands run from the project root:
 
-- build: `npm run build`  # runs `tsc -b && vite build`
-- test: not available; verify with `npm run build` and `npm run lint`
-- lint: `npm run lint`    # runs `eslint .`
-- dev: `npm run dev`      # Vite dev server on port 3000
+- install: `yarn install`
+- build: `yarn build`   # runs `tsc -b && vite build`
+- test: not available; verify with `yarn build` and `yarn lint`
+- lint: `yarn lint`     # runs `eslint .`
+- dev: `yarn dev`       # Vite dev server on port 3000
 
 ## Rules (non-obvious; tooling-enforced conventions are left to the tooling)
 

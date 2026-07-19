@@ -3,7 +3,7 @@ name: editing-ghost-editor
 description: Guides changes to the AI ghost autocomplete, suggestion cache, and OpenAI completion flow. Use whenever the user touches GhostEditor.tsx, suggestionCache.ts, lib/openai.ts completions, or Tab/Esc/manual-trigger behavior.
 metadata:
   type: task
-  verification_signal: npm run build in app/ + ghost-editor eval suite
+  verification_signal: yarn build in project root + ghost-editor eval suite
 ---
 # editing-ghost-editor
 
@@ -48,7 +48,7 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
 1. Load `working-in-cadernia` first.
 2. Identify the layer being changed (editor UI, debounce logic, prompt, cache, or OpenAI client).
 3. Keep the ref/state guard pattern when touching async completion handlers.
-4. Run `npm run build` in `app/`.
+4. Run `yarn build` in the project root.
 5. Run the ghost-editor eval suite (`scripts/eval-ghost-editor.sh`).
 
 ## References
@@ -57,4 +57,4 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
 
 ## <evolution>
 
-On task completion, run the <memory_pipeline>: if there is IMPORTANT and VERIFIED information to retain, update THIS SKILL.md DIRECTLY. Do NOT create learnings files. Do NOT self-merge anything that has not passed `npm run build` in `app/` and the ghost-editor eval suite.
+On task completion, run the <memory_pipeline>: if there is IMPORTANT and VERIFIED information to retain, update THIS SKILL.md DIRECTLY. Do NOT create learnings files. Do NOT self-merge anything that has not passed `yarn build` in the project root and the ghost-editor eval suite.

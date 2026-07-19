@@ -12,10 +12,10 @@
 ## Commands
 
 ```bash
-cd app
-npm run dev     # port 3000
-npm run build   # tsc -b && vite build
-npm run lint    # eslint .
+yarn install
+yarn dev     # port 3000
+yarn build   # tsc -b && vite build
+yarn lint    # eslint .
 ```
 
 ## Path alias
@@ -24,7 +24,7 @@ npm run lint    # eslint .
 
 ## Config files
 
-- `app/vite.config.ts` — `base: './'`, port 3000, alias `@`.
-- `app/tailwind.config.js` — dark mode `class`, content scan.
-- `app/eslint.config.js` — flat config, recommended TS/React Hooks/Refresh.
-- `app/tsconfig.app.json` — strict, unused locals/parameters, verbatim module syntax.
+- `vite.config.ts` — `base: './'`, port 3000, alias `@`, dev-only inspect plugin.
+- `tailwind.config.js` — dark mode `class`, content scan.
+- `eslint.config.js` — flat config, recommended TS/React Hooks/Refresh.
+- `tsconfig.app.json` — strict, unused locals/parameters, verbatim module syntax.

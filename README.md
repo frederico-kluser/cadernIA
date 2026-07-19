@@ -24,12 +24,11 @@
 ## Getting Started
 
 ```bash
-cd app
-npm install
-npm run dev
+yarn install
+yarn dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 Set your OpenAI API key in the app's **API Key** dialog (⚙️ icon).
 
@@ -37,18 +36,21 @@ Set your OpenAI API key in the app's **API Key** dialog (⚙️ icon).
 
 ```
 cadernIA/
-├── app/                  # Vite React application
-│   ├── src/
-│   │   ├── components/   # React components + shadcn/ui
-│   │   ├── hooks/        # Custom React hooks
-│   │   ├── lib/          # Database, OpenAI client, utils
-│   │   ├── pages/        # Route pages
-│   │   └── App.tsx       # Root component
-│   ├── index.html
-│   ├── vite.config.ts
-│   └── package.json
+├── src/
+│   ├── components/   # React components + shadcn/ui
+│   ├── hooks/        # Custom hooks
+│   ├── lib/          # Database, OpenAI client, utils
+│   ├── pages/        # Route pages
+│   └── App.tsx       # Root component
+├── index.html
+├── vite.config.ts
+├── package.json
 └── README.md
 ```
+
+## Agent Skills
+
+This project uses a knowledge-skills system. Every task goes through `.agents/skills/project-router`. See `AGENTS.md` for commands and rules.
 
 ## License
 
