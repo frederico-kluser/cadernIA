@@ -739,11 +739,20 @@ body,
   .sheet-overlay::before {
     left: 50px;
   }
+  /* remove a linha de margem vertical à esquerda para ganhar espaço */
+  .page-current::before,
+  .page-leave-front::before,
+  .page-leave-back::before {
+    display: none;
+  }
+  .page-header {
+    left: 18px;
+  }
   .ghost-editor-mirror,
   .ghost-editor-input {
-    padding-left: 66px;
+    padding-left: 18px;
   }
   .md-preview {
-    padding-left: 66px;
+    padding-left: 18px;
   }
 }
