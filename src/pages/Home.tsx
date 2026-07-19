@@ -11,6 +11,7 @@ import {
   FileText,
   FileType2,
   Ghost,
+  Github,
   KeyRound,
   Loader2,
   Maximize2,
@@ -34,6 +35,7 @@ import ApiKeyDialog, { type KeyStatus } from '@/components/ApiKeyDialog'
 import LockScreen from '@/components/LockScreen'
 import PageSheet, { type LeavingPage } from '@/components/PageSheet'
 import AttachmentsPanel from '@/components/AttachmentsPanel'
+import GitHubContextDialog from '@/components/GitHubContextDialog'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -90,6 +92,7 @@ const LS = {
   legacyText: 'noteghost_text',
   model: 'noteghost_model',
   fontSize: 'noteghost_font_size',
+  githubPat: 'noteghost_github_pat',
 }
 
 const MODELS = ['gpt-4o-mini', 'gpt-4.1-nano', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4.1']
@@ -126,6 +129,8 @@ export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [attachOpen, setAttachOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [githubDialogOpen, setGithubDialogOpen] = useState(false)
+  const [githubPat, setGithubPat] = useState(() => localStorage.getItem(LS.githubPat) ?? '')
 
   // ---------- refs ----------
   const textRef = useRef('')
@@ -211,6 +216,9 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem(LS.model, model)
   }, [model])
+  useEffect(() => {
+    localStorage.setItem(LS.githubPat, githubPat)
+  }, [githubPat])
 
   // ---------- validação da chave ----------
   const runValidation = useCallback(async (key: string) => {
@@ -545,6 +553,20 @@ export default function Home() {
     [active, updateActive],
   )
 
+  const importGitHubAttachments = useCallback(
+    (attachments: Attachment[]) => {
+      if (!active || attachments.length === 0) return
+      updateActive({ attachments: [...active.attachments, ...attachments] })
+      setGithubDialogOpen(false)
+      toast.success(
+        attachments.length === 1
+          ? `${attachments[0].name} importado do GitHub.`
+          : `${attachments.length} arquivos importados do GitHub.`,
+      )
+    },
+    [active, updateActive],
+  )
+
   // ---------- fullscreen (elemento raiz + fallback) ----------
   const toggleFullscreen = useCallback(async () => {
     if (pseudoFs) {
@@ -775,6 +797,17 @@ export default function Home() {
               />
             </PopoverContent>
           </Popover>
+
+          {/* contexto do GitHub */}
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Importar contexto do GitHub"
+            onClick={() => setGithubDialogOpen(true)}
+            className="h-9 w-9 flex-none text-[#f8f8f2] hover:bg-[#44475a] hover:text-[#f8f8f2]"
+          >
+            <Github className="h-5 w-5" />
+          </Button>
 
           <div className="toolbar-sep" />
 
@@ -1067,6 +1100,16 @@ export default function Home() {
               onRemove={removeAttachment}
               onAdd={() => fileInputRef.current?.click()}
             />
+            <button
+              className="drawer-btn mt-3 w-full"
+              onClick={() => {
+                setGithubDialogOpen(true)
+                setDrawerOpen(false)
+              }}
+            >
+              <Github className="h-5 w-5 text-[#f8f8f2]" />
+              Contexto do GitHub
+            </button>
           </div>
 
           {/* IA */}
@@ -1223,6 +1266,14 @@ export default function Home() {
         statusMessage={keyError}
         onSave={saveKey}
         onValidate={runValidation}
+      />
+
+      <GitHubContextDialog
+        open={githubDialogOpen}
+        onOpenChange={setGithubDialogOpen}
+        storedPat={githubPat}
+        onPatChange={setGithubPat}
+        onImport={importGitHubAttachments}
       />
 
       {/* confirmação de arrancar página */}
