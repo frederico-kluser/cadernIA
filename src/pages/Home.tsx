@@ -8,10 +8,12 @@ import {
   CornerDownLeft,
   Download,
   Eye,
+  FileDown,
   FileText,
   FileType2,
   Github,
   HelpCircle,
+  Image,
   KeyRound,
   Loader2,
   Maximize2,
@@ -90,6 +92,7 @@ import {
   type Attachment,
   type Project,
 } from '@/lib/db'
+import { downloadNoteImage, downloadNotePdf } from '@/lib/export'
 
 interface Suggestion {
   text: string
@@ -185,6 +188,7 @@ export default function Home() {
   const saveTimerRef = useRef<number | undefined>(undefined)
   const abortRef = useRef<AbortController | null>(null)
   const editorRef = useRef<GhostEditorHandle>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -340,6 +344,26 @@ export default function Home() {
     cursorRef.current = 0
     setHistory({ past: [], future: [] })
   }, [])
+
+  const handleDownloadImage = useCallback(async () => {
+    if (!active || !pageRef.current) return
+    try {
+      await downloadNoteImage(pageRef.current, active)
+      toast.success('Imagem da nota baixada.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao gerar imagem da nota.')
+    }
+  }, [active])
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!active || !pageRef.current) return
+    try {
+      await downloadNotePdf(pageRef.current, active)
+      toast.success('PDF da nota baixado.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao gerar PDF da nota.')
+    }
+  }, [active])
 
   // ---------- histórico (undo/redo) ----------
   const recordHistory = useCallback(() => {
@@ -918,6 +942,20 @@ export default function Home() {
                 Baixar como Markdown (.md)
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() => void handleDownloadImage()}
+                className="cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]"
+              >
+                <Image className="mr-2 h-4 w-4 text-[#ff79c6]" />
+                Baixar como imagem (.png)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => void handleDownloadPdf()}
+                className="cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]"
+              >
+                <FileDown className="mr-2 h-4 w-4 text-[#ff5555]" />
+                Baixar como PDF (.pdf)
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => active && downloadNote(active, 'txt')}
                 className="cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]"
               >
@@ -1089,6 +1127,7 @@ export default function Home() {
       <div className="stage-wrap">
         {dbReady && active && (
           <PageSheet
+            ref={pageRef}
             header={pageHeader}
             fontSize={fontSize}
             leaving={leaving}
@@ -1484,6 +1523,26 @@ export default function Home() {
               >
                 <FileText className="h-5 w-5 text-[#f1fa8c]" />
                 .md
+              </button>
+              <button
+                className="drawer-btn"
+                onClick={() => {
+                  void handleDownloadImage()
+                  setDrawerOpen(false)
+                }}
+              >
+                <Image className="h-5 w-5 text-[#ff79c6]" />
+                .png
+              </button>
+              <button
+                className="drawer-btn"
+                onClick={() => {
+                  void handleDownloadPdf()
+                  setDrawerOpen(false)
+                }}
+              >
+                <FileDown className="h-5 w-5 text-[#ff5555]" />
+                .pdf
               </button>
               <button
                 className="drawer-btn"

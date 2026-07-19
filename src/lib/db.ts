@@ -74,14 +74,5 @@ export function newProject(name: string, content = ''): Project {
   }
 }
 
-export function downloadNote(project: Project, format: 'md' | 'txt') {
-  const safe = project.name.trim().replace(/[^\w\dà-úÀ-Ú _-]+/gi, '') || 'nota'
-  const blob = new Blob([project.content], {
-    type: format === 'md' ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8',
-  })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `${safe}.${format}`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000)
-}
+// Reexportado de lib/export.ts para manter compatibilidade com importadores legados.
+export { downloadNote } from '@/lib/export'

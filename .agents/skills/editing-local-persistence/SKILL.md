@@ -25,7 +25,8 @@ The user wants to change how notes, attachments, settings, or the API key are st
   (`lib/db.ts:4-17`)
 - `onupgradeneeded` only creates the store if missing; there is **no schema upgrade path** beyond v1 (`lib/db.ts:25-29`).
 - CRUD helpers: `dbGetAll`, `dbPut`, `dbDelete` (`lib/db.ts:35-63`).
-- Export: `downloadNote` writes `project.content` to a `.md` or `.txt` blob (`lib/db.ts:77-86`).
+- Export helpers live in `lib/export.ts`. `downloadNote(project, format)` writes `project.content` to a `.md` or `.txt` blob; `downloadNoteImage(node, project)` renders a DOM node to a `.png` using `html-to-image`; and `downloadNotePdf(node, project)` renders a DOM node to a `.pdf` using `html2canvas` + `jspdf` (`lib/export.ts`).
+- `lib/db.ts` re-exports `downloadNote` for backwards compatibility; new export code should live in `lib/export.ts` to avoid DOM-only dependencies leaking into the persistence module (`src/lib/db.ts`).
 
 ### Attachment contract
 
