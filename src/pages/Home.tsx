@@ -1115,7 +1115,7 @@ export default function Home() {
             )}
             {mode === 'preview' && <MarkdownPreview source={content} />}
             {mode === 'split' && (
-              <div className="grid h-full grid-cols-2">
+              <div className="grid flex-1 grid-cols-2">
                 <div className="relative min-w-0 border-r border-[#44475a]">
                   <GhostEditor
                     key={active.id}

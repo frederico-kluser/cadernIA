@@ -17,7 +17,11 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 
 - `PageSheet.tsx` is the single source of truth for the page UI. It renders the current page and, during navigation, an animated leaving page on top of it (`components/PageSheet.tsx`).
 - The page is CSS-only: no WebGL, no Three.js, no off-screen texture rasterization. The old `NotepadScene.tsx`, `PageTexture.tsx`, and `Notepad.tsx` components were removed.
-- The sheet fills `stage-wrap` via `.page-perspective` / `.page-stack` (`src/index.css`). The editor is layered directly inside `.page-current`, not projected on top of a 3D canvas.
+- The sheet lives inside `.stage-wrap`, which is the scroll container (`overflow-y: auto`). The page itself is a flow-layout element that grows vertically with the note content (`src/index.css`).
+- `.page-current` uses `position: relative`, `display: flex; flex-direction: column`, and `min-height: 100%` so it always fills at least the viewport but expands as the editor/preview content grows (`src/index.css`).
+- `.page-header` is `position: sticky; top: 0` with a solid page-gradient background, so it stays visible while the content scrolls underneath (`src/index.css`).
+- The editor (`.ghost-editor-wrap`) is a CSS Grid with the mirror in flow and the textarea overlaying it. The textarea height is set to its `scrollHeight` via `useLayoutEffect` so the editor grows with the text and has no internal scroll (`GhostEditor.tsx`).
+- The ruled-line background is applied to the mirror with default `background-attachment` (scroll), so it moves with the mirror as `.stage-wrap` scrolls. The baseline offset `calc(var(--editor-lh) / 2 + var(--editor-font-size) * 0.334)` must be preserved (`src/index.css`).
 - `Home.tsx` builds the page header as a memoized React node and passes it to `PageSheet` along with the current note content. On navigation it captures the old header and a static HTML mirror of the old content and hands them to `PageSheet` as the `leaving` animation payload (`pages/Home.tsx`).
 
 ### Key flow
@@ -35,7 +39,10 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 
 - `pageHeader` is memoized with `useMemo` and must be declared **before** `startFlip` to satisfy the React hooks immutability lint rule (`react-hooks/immutability`).
 - The leaving front face reuses `.ghost-editor-mirror` styling, so it inherits the ruled-line background. The back face uses a CSS ruled gradient.
-- **Text-to-rule alignment**: the ruled line must hit the text baseline, not the bottom of the line box. Place the rule at the top of each `line-height` period (`repeating-linear-gradient` rule from `0` to `1px`) and offset it with `background-position: 0 calc(var(--editor-lh) / 2 + var(--editor-font-size) * 0.334)`. The factor `0.334` comes from Fira Code's metrics (`unitsPerEm=2000`, `sTypoAscender=1980`, `sTypoDescender=-644`) and places the rule exactly on the baseline. Keep `--editor-lh` unrounded to avoid drift across many lines (`index.css:354`, `GhostEditor.tsx:130`, `PageSheet.tsx:43`).
+- **Text-to-rule alignment**: the ruled line must hit the text baseline, not the bottom of the line box. Place the rule at the top of each `line-height` period (`repeating-linear-gradient` rule from `0` to `1px`) and offset it with `background-position: 0 calc(var(--editor-lh) / 2 + var(--editor-font-size) * 0.334)`. The factor `0.334` comes from Fira Code's metrics (`unitsPerEm=2000`, `sTypoAscender=1980`, `sTypoDescender=-644`) and places the rule exactly on the baseline. Keep `--editor-lh` unrounded to avoid drift across many lines (`src/index.css`, `src/components/GhostEditor.tsx`, `src/components/PageSheet.tsx`).
+- **Flow-layout pages and flip/tear height**: because `.page-current` grows with content, `PageSheet` captures the leaving page's height in a ref (`lastHeightRef`) while idle and applies it as `--leaving-height` / `min-height` during the animation. This prevents the leaving layer from collapsing if the incoming page is shorter (`src/components/PageSheet.tsx`).
+- **No internal editor scroll**: `.ghost-editor-input` uses `overflow: hidden` and its height is synchronized to `scrollHeight` after every value change. The scroll container is `.stage-wrap`, not the editor (`src/components/GhostEditor.tsx`).
+- **Markdown preview also flows**: `.md-preview` uses `flex: 1`, `min-height: 100%`, and the same ruled-line background so it grows with rendered Markdown inside the page (`src/index.css`).
 - `crypto.randomUUID()` is used for project/attachment IDs and requires secure context.
 
 ## Procedure

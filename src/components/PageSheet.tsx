@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 export type LeaveDirection = 'next' | 'prev'
 export type LeaveKind = 'flip' | 'tear'
@@ -28,6 +28,25 @@ export default function PageSheet({
   onLeavingEnd,
 }: PageSheetProps) {
   const busy = Boolean(leaving)
+  const pageRef = useRef<HTMLDivElement>(null)
+  const lastHeightRef = useRef<number>(0)
+  const [leavingHeight, setLeavingHeight] = useState<number | null>(null)
+
+  // guarda a altura da página atual enquanto não estiver animando
+  useLayoutEffect(() => {
+    if (!leaving && pageRef.current) {
+      lastHeightRef.current = pageRef.current.offsetHeight
+    }
+  })
+
+  // ao iniciar a animação, congela a altura da página que está saindo
+  useLayoutEffect(() => {
+    if (leaving) {
+      setLeavingHeight(lastHeightRef.current)
+    } else {
+      setLeavingHeight(null)
+    }
+  }, [leaving])
 
   const renderHoles = () => (
     <div className="page-holes" aria-hidden>
@@ -41,13 +60,21 @@ export default function PageSheet({
   const vars = {
     ['--editor-font-size' as string]: `${fontSize}px`,
     ['--editor-lh' as string]: `${lh}px`,
+    ...(leavingHeight != null
+      ? { ['--leaving-height' as string]: `${leavingHeight}px` }
+      : {}),
   }
 
   return (
     <div className="page-perspective" style={vars}>
-      <div className={`page-stack ${busy ? 'busy' : ''}`}>
+      <div
+        className={`page-stack ${busy ? 'busy' : ''}`}
+        style={
+          leavingHeight != null ? { minHeight: `${leavingHeight}px` } : undefined
+        }
+      >
         {/* folha atual (sempre visível) */}
-        <div className="page-current">
+        <div className="page-current" ref={pageRef}>
           {renderHoles()}
           <div className="page-header">{header}</div>
           <div className="page-body">{children}</div>

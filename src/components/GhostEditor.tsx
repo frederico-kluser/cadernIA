@@ -1,6 +1,7 @@
 import {
   forwardRef,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react'
@@ -111,14 +112,13 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
       return before + ghost + after + '&#8203;'
     }, [value, cursor, suggestion])
 
-    const syncScroll = () => {
+    // faz o textarea crescer junto com o conteúdo, eliminando scroll interno
+    useLayoutEffect(() => {
       const ta = taRef.current
-      const mirror = mirrorRef.current
-      if (ta && mirror) {
-        mirror.scrollTop = ta.scrollTop
-        mirror.scrollLeft = ta.scrollLeft
-      }
-    }
+      if (!ta) return
+      ta.style.height = 'auto'
+      ta.style.height = `${ta.scrollHeight}px`
+    }, [value, suggestion])
 
     const applyPendingSelection = () => {
       if (pendingSelection.current != null) {
@@ -160,7 +160,6 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
           onSelect={(e) => {
             onCursorChange(e.currentTarget.selectionStart)
           }}
-          onScroll={syncScroll}
           onKeyDown={(e) => {
             if (e.repeat) return
 
