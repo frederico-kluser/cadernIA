@@ -17,6 +17,7 @@ export interface CompletionRequest {
 const MAX_BEFORE = 6000
 const MAX_AFTER = 2000
 const MAX_ATTACH_TOTAL = 8000
+const MAX_BRIEFING = 2000
 
 function isReasoningModel(model: string): boolean {
   return /^o\d/.test(model)
@@ -109,25 +110,26 @@ function buildSystemPrompt(): string {
   ].join('\n')
 }
 
+/** Bloco de contexto dos anexos, consumindo MAX_ATTACH_TOTAL em cascata. */
+function buildAttachmentsBlock(attachments: AttachmentContext[]): string {
+  if (attachments.length === 0) return ''
+  let budget = MAX_ATTACH_TOTAL
+  const parts: string[] = []
+  for (const a of attachments) {
+    if (budget <= 0) break
+    const slice = a.content.slice(0, budget)
+    budget -= slice.length
+    parts.push(`--- arquivo anexado: ${a.name} ---\n${slice}`)
+  }
+  return `<contexto_de_arquivos_anexados>\n${parts.join('\n\n')}\n</contexto_de_arquivos_anexados>\n\n`
+}
+
 function buildUserPrompt(req: CompletionRequest): string {
   const before = req.beforeCursor.slice(-MAX_BEFORE)
   const after = req.afterCursor.slice(0, MAX_AFTER)
 
-  let attachBlock = ''
-  if (req.attachments.length > 0) {
-    let budget = MAX_ATTACH_TOTAL
-    const parts: string[] = []
-    for (const a of req.attachments) {
-      if (budget <= 0) break
-      const slice = a.content.slice(0, budget)
-      budget -= slice.length
-      parts.push(`--- arquivo anexado: ${a.name} ---\n${slice}`)
-    }
-    attachBlock = `<contexto_de_arquivos_anexados>\n${parts.join('\n\n')}\n</contexto_de_arquivos_anexados>\n\n`
-  }
-
   return (
-    attachBlock +
+    buildAttachmentsBlock(req.attachments) +
     `<texto_antes_do_cursor>\n${before}\n</texto_antes_do_cursor>\n` +
     `[CURSOR]\n` +
     `<texto_depois_do_cursor>\n${after}\n</texto_depois_do_cursor>\n\n` +
@@ -135,13 +137,16 @@ function buildUserPrompt(req: CompletionRequest): string {
   )
 }
 
+/** Normaliza quebras de linha e desembrulha cercas ``` que o modelo às vezes adiciona. */
+function normalizeModelText(raw: string): string {
+  const text = raw.replace(/\r\n/g, '\n')
+  const fence = text.match(/^```[a-zA-Z]*\n([\s\S]*?)```\s*$/)
+  return fence ? fence[1] : text
+}
+
 /** Remove cercas de código e sobreposição com o texto já digitado. */
 function sanitizeCompletion(raw: string, beforeCursor: string): string {
-  let text = raw.replace(/\r\n/g, '\n')
-
-  // Desembrulhar ``` fences caso o modelo teime em usá-las
-  const fence = text.match(/^```[a-zA-Z]*\n([\s\S]*?)```\s*$/)
-  if (fence) text = fence[1]
+  let text = normalizeModelText(raw)
 
   // Remover eco do final do texto anterior (o modelo às vezes repete o rabinho)
   const maxOverlap = Math.min(60, beforeCursor.length, text.length - 1)
@@ -169,6 +174,70 @@ export async function fetchCompletion(req: CompletionRequest): Promise<string> {
     trim: false,
   })
   return sanitizeCompletion(text, req.beforeCursor)
+}
+
+// ---------- sugestão guiada por briefing ----------
+
+export interface GuidedSuggestionRequest {
+  apiKey: string
+  model: string
+  briefing: string
+  beforeCursor: string
+  afterCursor: string
+  attachments: AttachmentContext[]
+  signal?: AbortSignal
+}
+
+function buildGuidedSystemPrompt(): string {
+  return [
+    'Você é um escritor assistente dentro de um bloco de notas. O usuário escreveu um briefing descrevendo o texto que quer.',
+    'Regras obrigatórias:',
+    '- Escreva um texto NOVO que atenda ao briefing. Não é a continuação literal da última frase: é um trecho que será inserido na posição [CURSOR].',
+    '- Retorne APENAS o texto pedido: sem preâmbulo, sem explicações, sem comentários, sem aspas envolventes, sem cercas de código e sem repetir o briefing.',
+    '- Nunca escreva frases como "Claro!", "Aqui está" ou "Segue o texto", nem qualquer meta-comentário.',
+    '- Use o texto antes e depois do cursor apenas como referência de assunto, idioma, tom, pessoa gramatical e formatação. NÃO repita trechos que já estão escritos.',
+    '- Escreva no mesmo idioma do documento. Se o documento estiver vazio, escreva no idioma do briefing.',
+    '- Respeite o tamanho pedido no briefing. Se o briefing não disser o tamanho, escreva de 1 a 3 parágrafos.',
+    '- Se o documento usa Markdown, mantenha a sintaxe Markdown coerente com o restante.',
+    '- Use os arquivos anexados somente como fonte de contexto (fatos, nomes, termos, estilo); nunca os reproduza por inteiro.',
+    '- Não invente fatos verificáveis (datas, números, citações) que não estejam no contexto; prefira uma formulação genérica.',
+    '- Comece direto na primeira palavra do conteúdo, sem linha em branco inicial.',
+  ].join('\n')
+}
+
+function buildGuidedUserPrompt(req: GuidedSuggestionRequest): string {
+  const before = req.beforeCursor.slice(-MAX_BEFORE)
+  const after = req.afterCursor.slice(0, MAX_AFTER)
+  const briefing = req.briefing.trim().slice(0, MAX_BRIEFING)
+
+  return (
+    buildAttachmentsBlock(req.attachments) +
+    `<briefing_do_usuario>\n${briefing}\n</briefing_do_usuario>\n\n` +
+    `<texto_antes_do_cursor>\n${before}\n</texto_antes_do_cursor>\n` +
+    `[CURSOR]\n` +
+    `<texto_depois_do_cursor>\n${after}\n</texto_depois_do_cursor>\n\n` +
+    'Escreva somente o texto que atende ao briefing, para ser inserido em [CURSOR]:'
+  )
+}
+
+export async function fetchGuidedSuggestion(
+  req: GuidedSuggestionRequest,
+): Promise<string> {
+  const raw = await chatCompletion({
+    apiKey: req.apiKey,
+    model: req.model,
+    messages: [
+      { role: 'system', content: buildGuidedSystemPrompt() },
+      { role: 'user', content: buildGuidedUserPrompt(req) },
+    ],
+    temperature: 0.7,
+    // Em modelos de raciocínio o teto vira max_completion_tokens, que inclui os
+    // tokens de raciocínio: um limite baixo faz a API devolver conteúdo vazio.
+    maxTokens: isReasoningModel(req.model) ? 4000 : 1200,
+    signal: req.signal,
+    trim: false,
+  })
+  return normalizeModelText(raw).trim()
 }
 
 export interface ClassifyResult {

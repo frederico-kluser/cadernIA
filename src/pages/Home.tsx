@@ -15,6 +15,7 @@ import {
   HelpCircle,
   Image,
   KeyRound,
+  Lightbulb,
   Loader2,
   Maximize2,
   Menu,
@@ -42,6 +43,7 @@ import PageSheet, { type LeavingPage } from '@/components/PageSheet'
 import AttachmentsPanel from '@/components/AttachmentsPanel'
 import GitHubContextDialog from '@/components/GitHubContextDialog'
 import AiEditDialog from '@/components/AiEditDialog'
+import AskSuggestionDialog from '@/components/AskSuggestionDialog'
 import TutorialDialog from '@/components/TutorialDialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -78,6 +80,7 @@ import {
   applyInstruction,
   classifyUtterance,
   fetchCompletion,
+  fetchGuidedSuggestion,
   transcribeAudio,
   validateApiKey,
 } from '@/lib/openai'
@@ -126,6 +129,21 @@ const MODEL_OPTIONS = [
 ]
 const DEFAULT_MODEL = MODEL_OPTIONS[1].id
 const AUTOCOMPLETE_DELAY_MS = 800
+
+/**
+ * Quebras de linha necessárias em volta de um texto inserido, contando as que já
+ * existem: `\n\n` cego somaria a uma quebra existente e abriria um vão duplo no
+ * preview de Markdown.
+ */
+function padForInsert(before: string, after: string): { lead: string; tail: string } {
+  const countBreaks = (s: string) => (s.match(/\n/g) ?? []).length
+  const tailWs = /[ \t\n]*$/.exec(before)?.[0] ?? ''
+  const headWs = /^[ \t\n]*/.exec(after)?.[0] ?? ''
+  return {
+    lead: before.trim() === '' ? '' : '\n'.repeat(Math.max(0, 2 - countBreaks(tailWs))),
+    tail: after.trim() === '' ? '' : '\n'.repeat(Math.max(0, 2 - countBreaks(headWs))),
+  }
+}
 
 export default function Home() {
   // ---------- projetos (páginas) ----------
@@ -180,6 +198,12 @@ export default function Home() {
     end: number
   } | null>(null)
 
+  // ---------- pedir sugestão ----------
+  const [askOpen, setAskOpen] = useState(false)
+  const [askPreview, setAskPreview] = useState<string | null>(null)
+  const [askLoading, setAskLoading] = useState(false)
+  const [askAnchor, setAskAnchor] = useState(0)
+
   // ---------- refs ----------
   const textRef = useRef('')
   const cursorRef = useRef(0)
@@ -187,6 +211,9 @@ export default function Home() {
   const debounceRef = useRef<number | undefined>(undefined)
   const saveTimerRef = useRef<number | undefined>(undefined)
   const abortRef = useRef<AbortController | null>(null)
+  // controller próprio: compartilhar com o autocomplete faria uma tecla digitada
+  // cancelar a geração guiada em andamento
+  const askAbortRef = useRef<AbortController | null>(null)
   const editorRef = useRef<GhostEditorHandle>(null)
   const pageRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -465,6 +492,105 @@ export default function Home() {
     setAiEditPreview(null)
     toast.success('Edição aplicada.')
   }, [aiEditPreview, aiEditSelection, recordHistory, updateActive])
+
+  // ---------- pedir sugestão ----------
+  const openAskSuggestion = useCallback(() => {
+    // sem isso o debounce dispara com o modal aberto e um ghost aparece atrás dele
+    window.clearTimeout(debounceRef.current)
+    const sel = editorRef.current?.getSelection()
+    // havendo seleção, escrevemos DEPOIS dela: aqui nunca destruímos texto
+    setAskAnchor(sel ? sel.end : cursorRef.current)
+    setAskPreview(null)
+    setSuggestion(null)
+    setAskOpen(true)
+  }, [])
+
+  const handleAskOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      askAbortRef.current?.abort()
+      askAbortRef.current = null
+      setAskLoading(false)
+    }
+    setAskOpen(open)
+  }, [])
+
+  const handleAskGenerate = useCallback(
+    async (briefing: string) => {
+      if (!apiKey || !unlocked) return
+      const trimmed = briefing.trim()
+      if (!trimmed) return
+
+      askAbortRef.current?.abort()
+      const ctrl = new AbortController()
+      askAbortRef.current = ctrl
+      setAskLoading(true)
+      setAskPreview(null)
+      try {
+        const full = textRef.current
+        const pos = Math.min(askAnchor, full.length)
+        const out = await fetchGuidedSuggestion({
+          apiKey,
+          model,
+          briefing: trimmed,
+          beforeCursor: full.slice(0, pos),
+          afterCursor: full.slice(pos),
+          attachments: (active?.attachments ?? []).map((a) => ({
+            name: a.name,
+            content: a.content,
+          })),
+          signal: ctrl.signal,
+        })
+        if (ctrl.signal.aborted) return
+        if (!out.trim()) {
+          toast('A IA não conseguiu escrever para esse pedido. Tente detalhar mais o briefing.')
+          return
+        }
+        setAskPreview(out)
+      } catch (e) {
+        if (!ctrl.signal.aborted) {
+          toast.error(e instanceof Error ? e.message : 'Falha ao gerar a sugestão.')
+        }
+      } finally {
+        if (askAbortRef.current === ctrl) {
+          askAbortRef.current = null
+          setAskLoading(false)
+        }
+      }
+    },
+    [apiKey, unlocked, model, active, askAnchor],
+  )
+
+  const handleAskInsert = useCallback(() => {
+    const text = askPreview?.trim()
+    if (!text || !active) return
+
+    recordHistory() // fotografa textRef/cursorRef: tem que rodar antes da sobrescrita
+
+    const full = textRef.current
+    const pos = Math.min(askAnchor, full.length)
+    const before = full.slice(0, pos)
+    const after = full.slice(pos)
+    const { lead, tail } = padForInsert(before, after)
+
+    const next = before + lead + text + tail + after
+    const caret = pos + lead.length + text.length
+
+    textRef.current = next
+    cursorRef.current = caret
+    updateActive({ content: next })
+    setCursor(caret)
+
+    setAskOpen(false)
+    setAskPreview(null)
+
+    // o caret só pode ser reposicionado depois do commit do React e do fechamento do Radix
+    window.setTimeout(() => {
+      editorRef.current?.focus()
+      editorRef.current?.setCursor(caret)
+    }, 60)
+
+    toast.success('Sugestão inserida.')
+  }, [askPreview, askAnchor, active, recordHistory, updateActive])
 
   // ---------- autocomplete ----------
   const requestCompletion = useCallback(
@@ -1020,6 +1146,17 @@ export default function Home() {
             <Wand2 className="h-5 w-5" />
           </Button>
 
+          {/* pedir sugestão */}
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Pedir sugestão (a IA escreve um texto novo a partir do seu pedido)"
+            onClick={openAskSuggestion}
+            className="h-9 w-9 flex-none text-[#ff79c6] hover:bg-[#44475a] hover:text-[#ff79c6]"
+          >
+            <Lightbulb className="h-5 w-5" />
+          </Button>
+
           {/* anexos — custom select */}
           <Popover open={attachOpen} onOpenChange={setAttachOpen}>
             <PopoverTrigger asChild>
@@ -1461,6 +1598,16 @@ export default function Home() {
                 <Wand2 className="h-5 w-5 text-[#bd93f9]" />
                 IA edit
               </button>
+              <button
+                className="drawer-btn"
+                onClick={() => {
+                  openAskSuggestion()
+                  setDrawerOpen(false)
+                }}
+              >
+                <Lightbulb className="h-5 w-5 text-[#ff79c6]" />
+                Sugestão
+              </button>
               <button className="drawer-btn" onClick={() => setFontSize((s) => Math.max(13, s - 1))}>
                 <span className="text-base font-bold text-[#f1fa8c]">A−</span>
                 Fonte
@@ -1690,6 +1837,15 @@ export default function Home() {
         loading={aiEditLoading}
         onGenerate={handleAiEditGenerate}
         onApply={handleAiEditApply}
+      />
+
+      <AskSuggestionDialog
+        open={askOpen}
+        onOpenChange={handleAskOpenChange}
+        preview={askPreview}
+        loading={askLoading}
+        onGenerate={(b) => void handleAskGenerate(b)}
+        onInsert={handleAskInsert}
       />
 
       <Toaster
