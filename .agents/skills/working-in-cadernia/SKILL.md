@@ -1,6 +1,6 @@
 ---
 name: working-in-cadernia
-description: Injects the cadernIA stack conventions before any React/Vite/Tailwind/shadcn task. Use whenever the user touches src/, package.json, vite.config.ts, tailwind.config.js, eslint.config.js, tsconfig files, or any build/lint/config change.
+description: Injects the GhostWriter stack conventions before any React/Vite/Tailwind/shadcn task. Use whenever the user touches src/, package.json, vite.config.ts, tailwind.config.js, eslint.config.js, tsconfig files, or any build/lint/config change.
 metadata:
   type: knowledge
   verification_signal: yarn lint && yarn build in project root

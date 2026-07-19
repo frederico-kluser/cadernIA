@@ -1,4 +1,4 @@
-# cadernIA — Skill Map
+# GhostWriter — Skill Map
 
 > Phase 2 artifact. Proposes the minimal skill library before generating any SKILL.md.
 

@@ -1,4 +1,4 @@
-# cadernIA — Project Analysis
+# GhostWriter — Project Analysis
 
 > Phase 1 artifact. Synthesizes repository docs, codebase structure, and the four isolated-context exploration reports.
 

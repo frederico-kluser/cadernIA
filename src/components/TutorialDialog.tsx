@@ -17,7 +17,7 @@ interface TutorialDialogProps {
 
 const STEPS = [
   {
-    title: 'Bem-vindo ao CadernIA',
+    title: 'Bem-vindo ao GhostWriter',
     description:
       'Seu bloco de notas com IA. Insira sua chave OpenAI para desbloquear o autocomplete, o ditado e o editor inteligente.',
   },

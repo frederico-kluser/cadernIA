@@ -1,4 +1,4 @@
-# cadernIA Skill Catalog
+# GhostWriter Skill Catalog
 
 > Source of truth: `.agents/skills/` (symlinked from `.claude/skills/`).
 > Always route through `project-router` before any implementation work.

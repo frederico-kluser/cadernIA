@@ -1,4 +1,4 @@
-# cadernIA 🧠📒
+# GhostWriter 🧠📒
 
 **AI-powered notepad with ghost autocomplete.** Write naturally and let the AI suggest completions as you type — like having a co-writer inside your notebook.
 
@@ -35,7 +35,7 @@ Set your OpenAI API key in the app's **API Key** dialog (⚙️ icon).
 ## Project Structure
 
 ```
-cadernIA/
+ghostwriter/
 ├── src/
 │   ├── components/   # React components + shadcn/ui
 │   ├── hooks/        # Custom hooks
