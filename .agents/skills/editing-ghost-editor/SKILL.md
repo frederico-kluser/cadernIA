@@ -33,7 +33,9 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
 
 ### Key behaviors
 
-- `Tab` accepts the suggestion once per keypress (repeat events and a 120 ms cooldown prevent double acceptance); `Esc` dismisses; `Ctrl/Cmd+Space|Enter` triggers manually; otherwise two-space tab insertion (`components/GhostEditor.tsx:164-191`).
+- `Tab` accepts the suggestion once per keypress (repeat events and a 400 ms cooldown prevent double acceptance); `Esc` dismisses; `Ctrl/Cmd+Space|Enter` triggers manually; otherwise two-space tab insertion (`components/GhostEditor.tsx:164-191`).
+- The acceptance handler in `Home.tsx` is guarded by `isAcceptingRef` to prevent concurrent calls from inserting the suggestion more than once before `setSuggestion(null)` propagates (`pages/Home.tsx:514-539@fc63c8f`).
+- On touch devices the floating bottom dock swaps the "Editar com IA" button for an "Aceitar sugestão" button whenever a suggestion is visible (`pages/Home.tsx:1247-1296@fc63c8f`).
 - `Ctrl/Cmd+Z` undoes the last accepted suggestion (and other recorded edits), `Ctrl/Cmd+Shift+Z` / `Ctrl/Cmd+Y` redoes; mobile shows undo/redo icons (`pages/Home.tsx:330-387`, `components/GhostEditor.tsx:164-191`).
 - Every new completion aborts the previous `AbortController` (`pages/Home.tsx:296-298`).
 - After the API returns, a guard compares `cursorRef.current === pos && textRef.current === full` to avoid stale suggestions (`pages/Home.tsx:317`).
