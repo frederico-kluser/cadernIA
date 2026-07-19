@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "description": "Deterministic enforcement hooks for the knowledge-skills system. These are proposed hooks; the human can review and enable them in their Claude Code configuration.",
+    "preToolUse": {
+      "skillWriteGate": {
+        "description": "Block Write/Edit on **/skills/**/SKILL.md unless a corresponding validation artifact exists for that skill.",
+        "match": "^(Write|Edit)$",
+        "path": "**/skills/**/SKILL.md",
+        "command": ".agents/skills/scripts/gate-skill-write.sh",
+        "exitCodes": { "0": "allow", "2": "block" }
+      },
+      "securityGuardrail": {
+        "description": "Block reads of .env/secrets and dangerous Bash commands.",
+        "match": "^(Read|Bash)$",
+        "command": ".agents/skills/scripts/security-guardrail.sh",
+        "exitCodes": { "0": "allow", "2": "block" }
+      }
+    },
+    "stop": {
+      "bootstrapGate": {
+        "description": "Block turn termination until .agents/skills/.bootstrap-state.json shows every phase done: true and gate_passed: true.",
+        "command": ".agents/skills/scripts/gate-stop.sh",
+        "exitCodes": { "0": "allow", "2": "block" }
+      }
+    }
+  }
+}
