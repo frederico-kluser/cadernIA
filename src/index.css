@@ -373,6 +373,7 @@ body,
   );
   background-position: 0 calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.334);
   background-size: 100% var(--editor-lh, 28px);
+  padding-top: 24px;
 }
 
 .ghost-editor-mirror .ghost-suggestion {

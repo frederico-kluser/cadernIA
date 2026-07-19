@@ -136,7 +136,7 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
         className="ghost-editor-wrap"
         style={{
           ['--editor-font-size' as string]: `${fontSize}px`,
-          ['--editor-lh' as string]: `${fontSize * 1.65}px`,
+          ['--editor-lh' as string]: `${fontSize * 2}px`,
         }}
       >
         <div
