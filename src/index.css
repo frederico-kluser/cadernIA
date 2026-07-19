@@ -69,7 +69,7 @@ body,
   background: #14151d;
 }
 
-/* ============ Palco 3D (Three.js + folha DOM) ============ */
+/* ============ Palco da folha full-page ============ */
 .stage-wrap {
   position: relative;
   flex: 1;
@@ -81,15 +81,36 @@ body,
     #14151d;
 }
 
-/* folha interativa projetada sobre o caderno 3D */
-.sheet-overlay {
+.page-perspective {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  perspective: 1400px;
+  box-sizing: border-box;
+}
+.page-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+/* folha atual */
+.page-current {
   position: absolute;
-  z-index: 10;
+  inset: 0;
+  z-index: 1;
   background: linear-gradient(180deg, #2e303d 0%, #282a36 26%);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.22);
 }
 /* linha de margem vertical */
-.sheet-overlay::before {
+.page-current::before,
+.page-leave-front::before,
+.page-leave-back::before {
   content: '';
   position: absolute;
   top: 0;
@@ -101,7 +122,9 @@ body,
   pointer-events: none;
 }
 /* sombreamento das bordas do papel */
-.sheet-overlay::after {
+.page-current::after,
+.page-leave-front::after,
+.page-leave-back::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -113,8 +136,8 @@ body,
     linear-gradient(0deg, rgba(0, 0, 0, 0.16), transparent 54px);
 }
 
-/* furos da folha (alinhados às argolas do 3D) */
-.sheet-holes {
+/* furos da folha */
+.page-holes {
   position: absolute;
   top: 1.8%;
   left: 5.5%;
@@ -124,7 +147,7 @@ body,
   z-index: 4;
   pointer-events: none;
 }
-.sheet-hole {
+.page-hole {
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -135,7 +158,7 @@ body,
 }
 
 /* cabeçalho da folha: título e data SOBRE a primeira linha pautada */
-.sheet-header {
+.page-header {
   position: absolute;
   top: calc(var(--editor-lh, 28px) * 2.5 - 8px);
   left: 78px;
@@ -147,7 +170,7 @@ body,
   gap: 12px;
   pointer-events: none;
 }
-.sheet-header > * {
+.page-header > * {
   pointer-events: auto;
 }
 
@@ -203,20 +226,91 @@ body,
   color: var(--dracula-comment);
 }
 
-.sheet-body {
+.page-body {
   position: absolute;
   inset: 0;
 }
 
-/* palco off-screen usado para gerar a textura da página 3D */
-.page-sheet {
-  position: relative;
-  overflow: hidden;
+/* folha saindo durante a animação */
+.page-leaving {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  transform-style: preserve-3d;
   background: linear-gradient(180deg, #2e303d 0%, #282a36 26%);
-  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.22);
 }
-.page-sheet.sheet-mirror .ghost-editor-wrap {
-  height: 100%;
+.page-leave-front,
+.page-leave-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  background: linear-gradient(180deg, #2e303d 0%, #282a36 26%);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+.page-leave-back {
+  transform: rotateY(180deg);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      #2a2c39 0,
+      #2a2c39 calc(var(--editor-lh, 28px) - 1px),
+      rgba(98, 114, 164, 0.3) calc(var(--editor-lh, 28px) - 1px),
+      rgba(98, 114, 164, 0.3) var(--editor-lh, 28px)
+    );
+}
+.page-leave-body {
+  position: absolute;
+  inset: 0;
+  padding: calc(var(--editor-lh, 28px) * 3.5) 24px 60px 78px;
+  overflow: hidden;
+}
+
+/* flip para a próxima página: gira pelo lado esquerdo */
+.page-leaving.flip.next {
+  transform-origin: left center;
+  animation: flip-next 0.85s ease-in-out forwards;
+}
+/* flip para a página anterior: gira pelo lado direito */
+.page-leaving.flip.prev {
+  transform-origin: right center;
+  animation: flip-prev 0.85s ease-in-out forwards;
+}
+
+/* arrancar página: sacode e some */
+.page-leaving.tear {
+  animation: tear-out 0.7s ease-in forwards;
+}
+
+@keyframes flip-next {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(-180deg);
+  }
+}
+@keyframes flip-prev {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(180deg);
+  }
+}
+@keyframes tear-out {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: translate(-10px, -16px) rotate(-5deg);
+  }
+  100% {
+    transform: translate(70px, -140px) rotate(22deg);
+    opacity: 0;
+  }
 }
 
 /* ============ Editor com ghost text (na folha) ============ */
