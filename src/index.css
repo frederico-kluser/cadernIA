@@ -254,11 +254,13 @@ body,
   background:
     repeating-linear-gradient(
       to bottom,
-      #2a2c39 0,
-      #2a2c39 calc(var(--editor-lh, 28px) - 1px),
-      rgba(98, 114, 164, 0.3) calc(var(--editor-lh, 28px) - 1px),
-      rgba(98, 114, 164, 0.3) var(--editor-lh, 28px)
+      rgba(98, 114, 164, 0.3) 0,
+      rgba(98, 114, 164, 0.3) 1px,
+      #2a2c39 1px,
+      #2a2c39 var(--editor-lh, 28px)
     );
+  background-position: 0 calc(var(--editor-font-size, 17px) * 1.125);
+  background-size: 100% var(--editor-lh, 28px);
 }
 .page-leave-body {
   position: absolute;
@@ -348,14 +350,16 @@ body,
   color: var(--dracula-fg);
   pointer-events: none;
   z-index: 1;
-  /* pauta da folha, alinhada às linhas do texto */
+  /* pauta da folha: risca no topo de cada célula, alinhada à baseline */
   background-image: repeating-linear-gradient(
     to bottom,
-    transparent 0,
-    transparent calc(var(--editor-lh, 28px) - 1px),
-    var(--rule-line) calc(var(--editor-lh, 28px) - 1px),
-    var(--rule-line) var(--editor-lh, 28px)
+    var(--rule-line) 0,
+    var(--rule-line) 1px,
+    transparent 1px,
+    transparent var(--editor-lh, 28px)
   );
+  background-position: 0 calc(var(--editor-font-size, 17px) * 1.125);
+  background-size: 100% var(--editor-lh, 28px);
   background-attachment: local;
 }
 

@@ -9,6 +9,7 @@ export interface GhostEditorHandle {
   insertAtCursor: (text: string) => void
   setCursor: (pos: number) => void
   focus: () => void
+  getSelection: () => { start: number; end: number }
 }
 
 interface GhostEditorProps {
@@ -79,6 +80,12 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
       focus() {
         taRef.current?.focus()
       },
+      getSelection() {
+        const ta = taRef.current
+        return ta
+          ? { start: ta.selectionStart, end: ta.selectionEnd }
+          : { start: 0, end: 0 }
+      },
     }))
 
     const mirrorHtml = useMemo(() => {
@@ -120,7 +127,7 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
         className="ghost-editor-wrap"
         style={{
           ['--editor-font-size' as string]: `${fontSize}px`,
-          ['--editor-lh' as string]: `${Math.round(fontSize * 1.65)}px`,
+          ['--editor-lh' as string]: `${fontSize * 1.65}px`,
         }}
       >
         <div

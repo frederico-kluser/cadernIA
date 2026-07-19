@@ -18,6 +18,61 @@ const MAX_BEFORE = 6000
 const MAX_AFTER = 2000
 const MAX_ATTACH_TOTAL = 8000
 
+function isReasoningModel(model: string): boolean {
+  return /^o\d/.test(model)
+}
+
+interface ChatOptions {
+  apiKey: string
+  model: string
+  messages: Array<{ role: 'system' | 'user'; content: string }>
+  temperature?: number
+  maxTokens?: number
+  responseFormat?: { type: 'json_object' }
+  signal?: AbortSignal
+}
+
+async function chatCompletion({
+  apiKey,
+  model,
+  messages,
+  temperature,
+  maxTokens,
+  responseFormat,
+  signal,
+}: ChatOptions): Promise<string> {
+  const reasoning = isReasoningModel(model)
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+  }
+  if (reasoning) {
+    if (maxTokens) body.max_completion_tokens = maxTokens
+  } else {
+    if (temperature !== undefined) body.temperature = temperature
+    if (maxTokens) body.max_tokens = maxTokens
+  }
+  if (responseFormat) body.response_format = responseFormat
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+    signal,
+  })
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.error?.message ?? `Erro HTTP ${res.status} na requisição à OpenAI.`)
+  }
+
+  const data = await res.json()
+  return (data.choices?.[0]?.message?.content ?? '').trim()
+}
+
 export async function validateApiKey(
   apiKey: string,
 ): Promise<{ ok: boolean; error?: string }> {
@@ -97,32 +152,111 @@ function sanitizeCompletion(raw: string, beforeCursor: string): string {
 }
 
 export async function fetchCompletion(req: CompletionRequest): Promise<string> {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${req.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: req.model,
-      messages: [
-        { role: 'system', content: buildSystemPrompt() },
-        { role: 'user', content: buildUserPrompt(req) },
-      ],
-      temperature: 0.3,
-      max_tokens: 180,
-    }),
+  const text = await chatCompletion({
+    apiKey: req.apiKey,
+    model: req.model,
+    messages: [
+      { role: 'system', content: buildSystemPrompt() },
+      { role: 'user', content: buildUserPrompt(req) },
+    ],
+    temperature: 0.3,
+    maxTokens: 180,
     signal: req.signal,
   })
+  return sanitizeCompletion(text, req.beforeCursor)
+}
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => null)
-    throw new Error(data?.error?.message ?? `Erro HTTP ${res.status} ao gerar autocomplete.`)
+export interface ClassifyResult {
+  type: 'transcription' | 'instruction'
+  payload: string
+}
+
+export async function classifyUtterance(
+  apiKey: string,
+  model: string,
+  transcript: string,
+  context: string,
+): Promise<ClassifyResult> {
+  const system = [
+    'Você é um classificador de comandos de voz para um app de notas.',
+    'O usuário pode estar ditando texto literal OU dando uma instrução para editar o documento.',
+    'Decida:',
+    '- "transcription": se a frase deve ser inserida como texto no cursor.',
+    '- "instruction": se a frase é um comando de edição (ex: apague a ultima frase, troque X por Y, reformule o paragrafo anterior).',
+    'Para "transcription", o payload é o texto a ser transcrito.',
+    'Para "instruction", o payload é a instrução de edição, mantida clara e curta.',
+    'Responda APENAS com JSON no formato: {"type":"transcription|instruction","payload":"..."}',
+  ].join('\n')
+
+  const user = `Trecho atual do documento (contexto):\n${context.slice(-800)}\n\nFala do usuário:\n${transcript}\n\nClassifique:`
+
+  const raw = await chatCompletion({
+    apiKey,
+    model,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    temperature: 0,
+    maxTokens: 120,
+    responseFormat: { type: 'json_object' },
+  })
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<ClassifyResult>
+    if (
+      (parsed.type === 'transcription' || parsed.type === 'instruction') &&
+      typeof parsed.payload === 'string'
+    ) {
+      return { type: parsed.type, payload: parsed.payload }
+    }
+  } catch {
+    // fall back to transcription
+  }
+  return { type: 'transcription', payload: transcript }
+}
+
+export interface ApplyInstructionRequest {
+  apiKey: string
+  model: string
+  instruction: string
+  fullText: string
+  selectedText?: string
+}
+
+export async function applyInstruction(req: ApplyInstructionRequest): Promise<string> {
+  const reasoning = isReasoningModel(req.model)
+  const maxTokens = reasoning ? 4096 : 4096
+
+  let system: string
+  let user: string
+
+  if (req.selectedText) {
+    system = [
+      'Você é um editor de texto. O usuário selecionou um trecho e deu uma instrução.',
+      'Aplique a instrução APENAS no trecho selecionado.',
+      'Retorne APENAS o trecho modificado, sem explicações, sem cercas de código, sem comentários.',
+    ].join('\n')
+    user = `Trecho selecionado:\n${req.selectedText}\n\nInstrução:\n${req.instruction}\n\nTrecho modificado:`
+  } else {
+    system = [
+      'Você é um editor de texto. O usuário deu uma instrução sobre o documento inteiro.',
+      'Aplique a instrução e retorne o TEXTO COMPLETO resultante.',
+      'Não inclua explicações, cercas de código ou comentários.',
+    ].join('\n')
+    user = `Texto atual:\n${req.fullText}\n\nInstrução:\n${req.instruction}\n\nTexto resultante:`
   }
 
-  const data = await res.json()
-  const text: string = data.choices?.[0]?.message?.content ?? ''
-  return sanitizeCompletion(text, req.beforeCursor)
+  return chatCompletion({
+    apiKey: req.apiKey,
+    model: req.model,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    temperature: 0.2,
+    maxTokens,
+  })
 }
 
 export async function transcribeAudio(apiKey: string, blob: Blob): Promise<string> {
