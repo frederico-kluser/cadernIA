@@ -24,8 +24,8 @@
     {
       "id": 4,
       "name": "Router + verified-evolution mechanism",
-      "done": false,
-      "gate_passed": false,
+      "done": true,
+      "gate_passed": true,
       "artifact": "skills/project-router/SKILL.md"
     },
     {
@@ -36,6 +36,6 @@
       "artifact": "validation-report.md"
     }
   ],
-  "updated_by": "phase-3-skills-generated",
+  "updated_by": "phase-4-router-evolution-hooks",
   "stop_hook_active": true
 }
