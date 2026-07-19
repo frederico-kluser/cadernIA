@@ -424,16 +424,7 @@ body,
   font-size: 16px;
   line-height: 1.7;
   color: var(--dracula-fg);
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      var(--rule-line) 0,
-      var(--rule-line) 1px,
-      transparent 1px,
-      transparent var(--editor-lh, 28px)
-    );
-  background-position: 0 calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.334);
-  background-size: 100% var(--editor-lh, 28px);
+  background: transparent;
 }
 .md-preview h1,
 .md-preview h2,
