@@ -259,7 +259,7 @@ body,
       #2a2c39 1px,
       #2a2c39 var(--editor-lh, 28px)
     );
-  background-position: 0 calc(var(--editor-font-size, 17px) * 1.125);
+  background-position: 0 calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.334);
   background-size: 100% var(--editor-lh, 28px);
 }
 .page-leave-body {
@@ -358,7 +358,7 @@ body,
     transparent 1px,
     transparent var(--editor-lh, 28px)
   );
-  background-position: 0 calc(var(--editor-font-size, 17px) * 1.125);
+  background-position: 0 calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.334);
   background-size: 100% var(--editor-lh, 28px);
   background-attachment: local;
 }
