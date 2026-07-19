@@ -5,8 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Columns2,
+  Command,
   CornerDownLeft,
-  Download,
   Eye,
   FileDown,
   FileText,
@@ -22,6 +22,7 @@ import {
   Mic,
   MicOff,
   Minimize2,
+  MoreHorizontal,
   Paperclip,
   Pencil,
   Plus,
@@ -44,7 +45,12 @@ import AttachmentsPanel from '@/components/AttachmentsPanel'
 import GitHubContextDialog from '@/components/GitHubContextDialog'
 import AiEditDialog from '@/components/AiEditDialog'
 import AskSuggestionDialog from '@/components/AskSuggestionDialog'
-import TutorialDialog from '@/components/TutorialDialog'
+import TourOverlay from '@/components/tour/TourOverlay'
+import ToolbarButton from '@/components/toolbar/ToolbarButton'
+import CommandPalette from '@/components/CommandPalette'
+import { useTour } from '@/hooks/useTour'
+import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts'
+import { formatShortcut, type Command as AppCommand, type Shortcut } from '@/lib/commands'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -57,6 +63,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -116,7 +123,7 @@ const LS = {
   model: 'noteghost_model',
   fontSize: 'noteghost_font_size',
   githubPat: 'noteghost_github_pat',
-  tutorial: 'noteghost_tutorial_seen',
+  // 'noteghost_tutorial_seen' (legado) agora pertence a lib/tour.ts
 }
 
 const MODEL_OPTIONS = [
@@ -143,6 +150,67 @@ function padForInsert(before: string, after: string): { lead: string; tail: stri
     lead: before.trim() === '' ? '' : '\n'.repeat(Math.max(0, 2 - countBreaks(tailWs))),
     tail: after.trim() === '' ? '' : '\n'.repeat(Math.max(0, 2 - countBreaks(headWs))),
   }
+}
+
+/**
+ * Atalhos globais.
+ *
+ * `mod+alt+…` porque as combinações mais curtas já pertencem ao navegador
+ * (Ctrl/Cmd+N nova janela, +T nova aba, +W fechar, +Shift+N anônima) e porque
+ * Tab, Esc, Ctrl+Espaço, Ctrl+Enter e Ctrl+Z/Y continuam sendo do editor.
+ * `mod+K` para a paleta é a convenção estabelecida na web.
+ */
+const SC = {
+  palette: { key: 'k', mod: true } satisfies Shortcut,
+  prevPage: { key: 'ArrowLeft', mod: true, alt: true } satisfies Shortcut,
+  nextPage: { key: 'ArrowRight', mod: true, alt: true } satisfies Shortcut,
+  newPage: { key: 'n', mod: true, alt: true } satisfies Shortcut,
+  dictate: { key: 'd', mod: true, alt: true } satisfies Shortcut,
+  aiEdit: { key: 'e', mod: true, alt: true } satisfies Shortcut,
+  askSuggestion: { key: 's', mod: true, alt: true } satisfies Shortcut,
+  fullscreen: { key: 'f', mod: true, alt: true } satisfies Shortcut,
+  retry: { key: 'r', mod: true, alt: true } satisfies Shortcut,
+  attach: { key: 'a', mod: true, alt: true } satisfies Shortcut,
+  modeEdit: { key: '1', mod: true, alt: true } satisfies Shortcut,
+  modeSplit: { key: '2', mod: true, alt: true } satisfies Shortcut,
+  modePreview: { key: '3', mod: true, alt: true } satisfies Shortcut,
+}
+
+/** Segmentos do controle de exibição. Rótulos são substantivos, como pede a HIG. */
+const MODES = [
+  {
+    id: 'edit' as const,
+    label: 'Editor',
+    hint: 'Só o texto',
+    icon: Pencil,
+    shortcut: SC.modeEdit,
+  },
+  {
+    id: 'split' as const,
+    label: 'Dividido',
+    hint: 'Texto e resultado lado a lado',
+    icon: Columns2,
+    shortcut: SC.modeSplit,
+  },
+  {
+    id: 'preview' as const,
+    label: 'Leitura',
+    hint: 'Markdown renderizado',
+    icon: Eye,
+    shortcut: SC.modePreview,
+  },
+]
+
+/** Classe repetida dos itens de menu. */
+const MI = 'cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]'
+
+/** Atalho alinhado à direita dentro de um item de menu. */
+function MenuHint({ s }: { s: Shortcut }) {
+  return (
+    <span className="ml-auto pl-3 text-[11px] tabular-nums text-[#6272a4]">
+      {formatShortcut(s)}
+    </span>
+  )
 }
 
 export default function Home() {
@@ -184,10 +252,7 @@ export default function Home() {
   const [githubPat, setGithubPat] = useState(() => localStorage.getItem(LS.githubPat) ?? '')
 
   // ---------- tutorial ----------
-  const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [tutorialSeen, setTutorialSeen] = useState(
-    () => localStorage.getItem(LS.tutorial) === '1',
-  )
+  // O estado por passo vive em useTour; a chave legada só é lida na migração.
 
   // ---------- editar com IA ----------
   const [aiEditOpen, setAiEditOpen] = useState(false)
@@ -226,6 +291,19 @@ export default function Home() {
       (window.matchMedia?.('(pointer: coarse)').matches || 'ontouchstart' in window),
     [],
   )
+
+  const [paletteOpen, setPaletteOpen] = useState(false)
+
+  /** Abaixo disso os segmentos de exibição ficam só com o símbolo. */
+  const [wideDesktop, setWideDesktop] = useState(
+    () => window.matchMedia?.('(min-width: 1140px)').matches ?? false,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1140px)')
+    const on = () => setWideDesktop(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
 
   const canUndo = history.past.length > 0
   const canRedo = history.future.length > 0
@@ -300,25 +378,14 @@ export default function Home() {
     localStorage.setItem(LS.githubPat, githubPat)
   }, [githubPat])
 
+  // ---------- tutorial ancorado ----------
+  const tour = useTour(isTouch)
+  const { autoStart: tourAutoStart, recordAction: tourAction } = tour
+
+  // Só depois que a folha existe de fato — o primeiro passo aponta para ela.
   useEffect(() => {
-    localStorage.setItem(LS.tutorial, tutorialSeen ? '1' : '0')
-  }, [tutorialSeen])
-
-  // ---------- tutorial ----------
-  useEffect(() => {
-    if (dbReady && unlocked && !tutorialSeen) {
-      setTutorialOpen(true)
-    }
-  }, [dbReady, unlocked, tutorialSeen])
-
-  const markTutorialSeen = useCallback(() => {
-    setTutorialSeen(true)
-    setTutorialOpen(false)
-  }, [])
-
-  const reopenTutorial = useCallback(() => {
-    setTutorialOpen(true)
-  }, [])
+    if (dbReady && unlocked) tourAutoStart()
+  }, [dbReady, unlocked, tourAutoStart])
 
   // ---------- validação da chave ----------
   const runValidation = useCallback(async (key: string) => {
@@ -438,7 +505,8 @@ export default function Home() {
     setAiEditSelection(sel.start === sel.end ? null : sel)
     setAiEditPreview(null)
     setAiEditOpen(true)
-  }, [])
+    tourAction('editar-ia')
+  }, [tourAction])
 
   const handleAiEditGenerate = useCallback(
     async (instruction: string, onlySelection: boolean) => {
@@ -503,7 +571,8 @@ export default function Home() {
     setAskPreview(null)
     setSuggestion(null)
     setAskOpen(true)
-  }, [])
+    tourAction('pedir-sugestao')
+  }, [tourAction])
 
   const handleAskOpenChange = useCallback((open: boolean) => {
     if (!open) {
@@ -675,7 +744,8 @@ export default function Home() {
     editorRef.current?.setCursor(pos + suggestion.text.length)
     setSuggestion(null)
     scheduleCompletion()
-  }, [suggestion, recordHistory, scheduleCompletion, updateActive])
+    tourAction('aceitar')
+  }, [suggestion, recordHistory, scheduleCompletion, updateActive, tourAction])
 
   // libera a trava de aceitação quando a sugestão for efetivamente dispensada
   useEffect(() => {
@@ -693,8 +763,9 @@ export default function Home() {
       setCursor(cursorPos)
       setSuggestion(null)
       scheduleCompletion()
+      if (value.trim().length >= 12) tourAction('escrever')
     },
-    [scheduleCompletion, updateActive],
+    [scheduleCompletion, updateActive, tourAction],
   )
 
   const handleCursorChange = useCallback((pos: number) => {
@@ -773,7 +844,8 @@ export default function Home() {
     setProjects((prev) => [...prev, p])
     void startPageTransition(p.id)
     toast.success(`Nova página criada: ${p.name}`)
-  }, [busy, active, projects.length, startPageTransition])
+    tourAction('paginas')
+  }, [busy, active, projects.length, startPageTransition, tourAction])
 
   // ---------- arrancar página ----------
   const deletePage = useCallback(() => {
@@ -805,6 +877,7 @@ export default function Home() {
 
   const startRecording = useCallback(async () => {
     if (!apiKey) return
+    tourAction('ditar')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -866,7 +939,7 @@ export default function Home() {
     } catch {
       toast.error('Não foi possível acessar o microfone. Verifique a permissão.')
     }
-  }, [apiKey, model, recordHistory, updateActive])
+  }, [apiKey, model, recordHistory, updateActive, tourAction])
 
   // ---------- anexos (por página) ----------
   const handleFiles = useCallback(
@@ -966,14 +1039,222 @@ export default function Home() {
           ? 'bg-[#8be9fd] animate-pulse'
           : 'bg-[#6272a4]'
 
-  const modeBtn = (m: ViewMode) =>
-    `h-8 w-8 rounded-md p-1.5 transition-colors flex-none ${
-      mode === m
-        ? 'bg-[#bd93f9] text-[#282a36]'
-        : 'text-[#6272a4] hover:bg-[#44475a] hover:text-[#f8f8f2]'
-    }`
-
   const attachCount = active?.attachments.length ?? 0
+
+  /**
+   * Registro único de comandos. Alimenta a paleta e os atalhos globais; a
+   * barra de ferramentas desenha os mesmos comandos com layout próprio.
+   * Declarar uma vez é o que impede a ação de ganhar nome diferente em cada
+   * superfície, que era metade da confusão.
+   */
+  const commands = useMemo<AppCommand[]>(
+    () => [
+      {
+        id: 'ia.editar',
+        label: 'Editar com IA',
+        hint: 'Reescrever, resumir, mudar o tom — com prévia',
+        group: 'escrita',
+        icon: Wand2,
+        shortcut: SC.aiEdit,
+        tone: '#bd93f9',
+        run: openAiEdit,
+      },
+      {
+        id: 'ia.pedir',
+        label: 'Pedir sugestão',
+        hint: 'A IA escreve um texto novo a partir do seu pedido',
+        group: 'escrita',
+        icon: Lightbulb,
+        shortcut: SC.askSuggestion,
+        tone: '#ff79c6',
+        run: openAskSuggestion,
+      },
+      {
+        id: 'ia.ditar',
+        label: recState === 'recording' ? 'Parar a gravação' : 'Ditar',
+        hint: 'Falar em vez de digitar; também aceita ordens',
+        group: 'escrita',
+        icon: recState === 'recording' ? MicOff : Mic,
+        shortcut: SC.dictate,
+        tone: '#50fa7b',
+        disabled: recState === 'transcribing',
+        run: () => (recState === 'recording' ? stopRecording() : void startRecording()),
+      },
+      {
+        id: 'ia.sugerir',
+        label: 'Gerar sugestão de novo',
+        hint: 'Pede outra continuação, ignorando a memória',
+        group: 'escrita',
+        icon: RefreshCw,
+        shortcut: SC.retry,
+        tone: '#8be9fd',
+        disabled: loading,
+        run: () => void requestCompletion(true),
+      },
+      {
+        id: 'pagina.nova',
+        label: 'Nova folha',
+        hint: 'Cada folha tem texto e anexos próprios',
+        group: 'pagina',
+        icon: Plus,
+        shortcut: SC.newPage,
+        tone: '#50fa7b',
+        disabled: busy,
+        run: addPage,
+      },
+      {
+        id: 'pagina.anterior',
+        label: 'Folha anterior',
+        group: 'pagina',
+        icon: ChevronLeft,
+        shortcut: SC.prevPage,
+        tone: '#8be9fd',
+        disabled: busy || activeIndex <= 0,
+        run: () => goTo(-1),
+      },
+      {
+        id: 'pagina.proxima',
+        label: 'Próxima folha',
+        group: 'pagina',
+        icon: ChevronRight,
+        shortcut: SC.nextPage,
+        tone: '#8be9fd',
+        disabled: busy || activeIndex < 0 || activeIndex >= projects.length - 1,
+        run: () => goTo(1),
+      },
+      {
+        id: 'pagina.baixar-md',
+        label: 'Baixar como Markdown',
+        group: 'pagina',
+        icon: FileText,
+        tone: '#bd93f9',
+        run: () => active && downloadNote(active, 'md'),
+      },
+      {
+        id: 'pagina.baixar-txt',
+        label: 'Baixar como texto',
+        group: 'pagina',
+        icon: FileType2,
+        tone: '#8be9fd',
+        run: () => active && downloadNote(active, 'txt'),
+      },
+      {
+        id: 'pagina.baixar-png',
+        label: 'Baixar como imagem',
+        hint: 'A folha inteira em .png, do jeito que está na tela',
+        group: 'pagina',
+        icon: Image,
+        tone: '#ff79c6',
+        run: () => void handleDownloadImage(),
+      },
+      {
+        id: 'pagina.baixar-pdf',
+        label: 'Baixar como PDF',
+        group: 'pagina',
+        icon: FileDown,
+        tone: '#ff5555',
+        run: () => void handleDownloadPdf(),
+      },
+      {
+        id: 'pagina.arrancar',
+        label: 'Arrancar esta folha',
+        hint: 'Apaga a folha atual',
+        group: 'pagina',
+        icon: Trash2,
+        danger: true,
+        disabled: busy,
+        run: deletePage,
+      },
+      {
+        id: 'ctx.anexos',
+        label: 'Arquivos de contexto',
+        hint: 'O que a IA lê junto com a sua folha',
+        group: 'contexto',
+        icon: Paperclip,
+        shortcut: SC.attach,
+        tone: '#ffb86c',
+        run: () => setAttachOpen(true),
+      },
+      {
+        id: 'ctx.github',
+        label: 'Contexto do GitHub',
+        hint: 'Importar arquivos de um repositório',
+        group: 'contexto',
+        icon: Github,
+        run: () => setGithubDialogOpen(true),
+      },
+      ...MODES.map<AppCommand>((m) => ({
+        id: `ver.${m.id}`,
+        label: `Modo ${m.label}`,
+        hint: m.hint,
+        group: 'exibicao',
+        icon: m.icon,
+        shortcut: m.shortcut,
+        active: mode === m.id,
+        run: () => setMode(m.id),
+      })),
+      {
+        id: 'ver.telacheia',
+        label: fullscreenActive ? 'Sair da tela cheia' : 'Tela cheia',
+        group: 'exibicao',
+        icon: fullscreenActive ? Minimize2 : Maximize2,
+        shortcut: SC.fullscreen,
+        tone: '#f1fa8c',
+        run: () => void toggleFullscreen(),
+      },
+      {
+        id: 'app.chave',
+        label: 'Chave da OpenAI',
+        hint: 'Guardada só neste navegador',
+        group: 'app',
+        icon: KeyRound,
+        tone: '#bd93f9',
+        run: () => setKeyDialogOpen(true),
+      },
+      {
+        id: 'app.tutorial',
+        label: 'Refazer o tutorial',
+        hint: 'Mostra de novo os passos guiados',
+        group: 'app',
+        icon: HelpCircle,
+        tone: '#8be9fd',
+        run: () => tour.restart(),
+      },
+      {
+        id: 'app.paleta',
+        label: 'Todos os comandos',
+        group: 'app',
+        icon: Command,
+        shortcut: SC.palette,
+        hiddenInPalette: true,
+        run: () => setPaletteOpen((o) => !o),
+      },
+    ],
+    [
+      openAiEdit,
+      openAskSuggestion,
+      handleDownloadImage,
+      handleDownloadPdf,
+      recState,
+      stopRecording,
+      startRecording,
+      loading,
+      requestCompletion,
+      busy,
+      addPage,
+      activeIndex,
+      projects.length,
+      goTo,
+      active,
+      deletePage,
+      mode,
+      fullscreenActive,
+      toggleFullscreen,
+      tour,
+    ],
+  )
+
+  useGlobalShortcuts(commands, unlocked)
 
   return (
     <div
@@ -987,7 +1268,7 @@ export default function Home() {
         <Button
           variant="ghost"
           size="icon"
-          title="Abrir menu"
+          aria-label="Abrir menu"
           onClick={() => setDrawerOpen(true)}
           className="h-9 w-9 flex-none text-[#f8f8f2] hover:bg-[#44475a] md:hidden"
         >
@@ -1003,253 +1284,281 @@ export default function Home() {
 
         {/* ações desktop */}
         <div className="hidden flex-1 items-center gap-1.5 md:flex">
-          <div className="toolbar-sep" />
-
-          {/* navegação de páginas */}
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Página anterior"
-            disabled={busy || activeIndex <= 0}
-            onClick={() => goTo(-1)}
-            className="h-9 w-9 flex-none text-[#8be9fd] hover:bg-[#44475a] hover:text-[#8be9fd] disabled:opacity-30"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Próxima página"
-            disabled={busy || activeIndex < 0 || activeIndex >= projects.length - 1}
-            onClick={() => goTo(1)}
-            className="h-9 w-9 flex-none text-[#8be9fd] hover:bg-[#44475a] hover:text-[#8be9fd] disabled:opacity-30"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Nova página (projeto)"
-            disabled={busy}
-            onClick={addPage}
-            className="h-9 w-9 flex-none text-[#50fa7b] hover:bg-[#44475a] hover:text-[#50fa7b]"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Arrancar esta página"
-            disabled={busy}
-            onClick={deletePage}
-            className="h-9 w-9 flex-none text-[#ff5555] hover:bg-[#44475a] hover:text-[#ff5555]"
-          >
-            <Trash2 className="h-5 w-5" />
-          </Button>
-
-          {/* download da nota */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Baixar esta nota"
-                className="h-9 w-9 flex-none text-[#f1fa8c] hover:bg-[#44475a] hover:text-[#f1fa8c]"
-              >
-                <Download className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="border-[#44475a] bg-[#282a36] text-[#f8f8f2]">
-              <DropdownMenuItem
-                onClick={() => active && downloadNote(active, 'md')}
-                className="cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]"
-              >
-                <FileText className="mr-2 h-4 w-4 text-[#bd93f9]" />
-                Baixar como Markdown (.md)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => void handleDownloadImage()}
-                className="cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]"
-              >
-                <Image className="mr-2 h-4 w-4 text-[#ff79c6]" />
-                Baixar como imagem (.png)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => void handleDownloadPdf()}
-                className="cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]"
-              >
-                <FileDown className="mr-2 h-4 w-4 text-[#ff5555]" />
-                Baixar como PDF (.pdf)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => active && downloadNote(active, 'txt')}
-                className="cursor-pointer focus:bg-[#44475a] focus:text-[#f8f8f2]"
-              >
-                <FileType2 className="mr-2 h-4 w-4 text-[#8be9fd]" />
-                Baixar como texto (.txt)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <div className="toolbar-sep" />
-
-          {/* retry do autocomplete */}
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Tentar autocomplete novamente (ignora a memória)"
-            disabled={loading}
-            onClick={() => void requestCompletion(true)}
-            className="h-9 w-9 flex-none text-[#8be9fd] hover:bg-[#44475a] hover:text-[#8be9fd]"
-          >
-            {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <RefreshCw className="h-5 w-5" />
-            )}
-          </Button>
-
-          {/* microfone */}
-          <Button
-            variant="ghost"
-            size="icon"
-            title={
-              recState === 'recording' ? 'Parar gravação e transcrever' : 'Ditar com Whisper'
-            }
-            disabled={recState === 'transcribing'}
-            onClick={() =>
-              recState === 'recording' ? stopRecording() : void startRecording()
-            }
-            className={`h-9 w-9 flex-none hover:bg-[#44475a] ${
-              recState === 'recording'
-                ? 'rec-pulse text-[#ff5555] hover:text-[#ff5555]'
-                : 'text-[#50fa7b] hover:text-[#50fa7b]'
-            }`}
-          >
-            {recState === 'transcribing' ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : recState === 'recording' ? (
-              <MicOff className="h-5 w-5" />
-            ) : (
-              <Mic className="h-5 w-5" />
-            )}
-          </Button>
-
-          {/* editar com IA */}
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Editar com IA"
-            onClick={openAiEdit}
-            className="h-9 w-9 flex-none text-[#bd93f9] hover:bg-[#44475a] hover:text-[#bd93f9]"
-          >
-            <Wand2 className="h-5 w-5" />
-          </Button>
-
-          {/* pedir sugestão */}
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Pedir sugestão (a IA escreve um texto novo a partir do seu pedido)"
-            onClick={openAskSuggestion}
-            className="h-9 w-9 flex-none text-[#ff79c6] hover:bg-[#44475a] hover:text-[#ff79c6]"
-          >
-            <Lightbulb className="h-5 w-5" />
-          </Button>
-
-          {/* anexos — custom select */}
-          <Popover open={attachOpen} onOpenChange={setAttachOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Arquivos de contexto desta página"
-                className="relative h-9 w-9 flex-none text-[#ffb86c] hover:bg-[#44475a] hover:text-[#ffb86c]"
-              >
-                <Paperclip className="h-5 w-5" />
-                {attachCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ffb86c] px-1 text-[10px] font-bold text-[#282a36]">
-                    {attachCount}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="w-80 border-[#44475a] bg-[#282a36] p-3 text-[#f8f8f2]"
-            >
-              <AttachmentsPanel
-                attachments={active?.attachments ?? []}
-                onRemove={removeAttachment}
-                onAdd={() => fileInputRef.current?.click()}
-              />
-            </PopoverContent>
-          </Popover>
-
-          {/* contexto do GitHub */}
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Importar contexto do GitHub"
-            onClick={() => setGithubDialogOpen(true)}
-            className="h-9 w-9 flex-none text-[#f8f8f2] hover:bg-[#44475a] hover:text-[#f8f8f2]"
-          >
-            <Github className="h-5 w-5" />
-          </Button>
-
-          <div className="toolbar-sep" />
-
-          {/* modos de visualização */}
-          <div className="flex flex-none items-center gap-0.5 rounded-lg border border-[#44475a] bg-[#282a36] p-0.5">
-            <button
-              title="Editar"
-              className={modeBtn('edit')}
-              onClick={() => setMode('edit')}
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              title="Editar e visualizar"
-              className={modeBtn('split')}
-              onClick={() => setMode('split')}
-            >
-              <Columns2 className="h-4 w-4" />
-            </button>
-            <button
-              title="Visualizar Markdown"
-              className={modeBtn('preview')}
-              onClick={() => setMode('preview')}
-            >
-              <Eye className="h-4 w-4" />
-            </button>
+          {/*
+            GRUPO 1 — Folha. Navegação e criação, que a HIG manda agrupar em
+            seção própria: "Group navigation controls and critical actions […]
+            in dedicated, familiar, and visually distinct sections."
+            Arrancar e Baixar saíram daqui para o menu Mais: são as ações menos
+            frequentes deste grupo, e Arrancar é destrutiva ao lado de Nova.
+          */}
+          <div className="toolbar-group" role="group" aria-label="Folha">
+            <ToolbarButton
+              label="Folha anterior"
+              icon={<ChevronLeft className="h-[18px] w-[18px]" />}
+              onClick={() => goTo(-1)}
+              disabled={busy || activeIndex <= 0}
+              shortcut={SC.prevPage}
+              tone="#8be9fd"
+            />
+            <span className="px-1 text-xs tabular-nums text-[#6272a4]">
+              {activeIndex + 1}/{projects.length}
+            </span>
+            <ToolbarButton
+              label="Próxima folha"
+              icon={<ChevronRight className="h-[18px] w-[18px]" />}
+              onClick={() => goTo(1)}
+              disabled={busy || activeIndex < 0 || activeIndex >= projects.length - 1}
+              shortcut={SC.nextPage}
+              tone="#8be9fd"
+            />
+            <ToolbarButton
+              label="Nova folha"
+              icon={<Plus className="h-[18px] w-[18px]" />}
+              onClick={addPage}
+              disabled={busy}
+              shortcut={SC.newPage}
+              tone="#50fa7b"
+              data-tour="new-page"
+            />
           </div>
 
-          {/* fullscreen */}
-          <Button
-            variant="ghost"
-            size="icon"
-            title={fullscreenActive ? 'Sair da tela cheia' : 'Tela cheia'}
-            onClick={() => void toggleFullscreen()}
-            className="h-9 w-9 flex-none text-[#f1fa8c] hover:bg-[#44475a] hover:text-[#f1fa8c]"
-          >
-            {fullscreenActive ? (
-              <Minimize2 className="h-5 w-5" />
-            ) : (
-              <Maximize2 className="h-5 w-5" />
-            )}
-          </Button>
+          {/*
+            GRUPO 2 — Escrita com IA. As duas únicas ações com rótulo visível.
+            A HIG prefere símbolo a texto, MAS abre exceção justamente para
+            "actions like edit that aren't well-represented by symbols" — e
+            uma varinha não diz "reescreva este texto com uma ordem em
+            português" para ninguém. O teste que manda é o outro: "Don't make
+            people guess or experiment to figure out what a toolbar item does."
+          */}
+          <div className="toolbar-group" role="group" aria-label="Escrita com IA">
+            <ToolbarButton
+              label={recState === 'recording' ? 'Parar gravação' : 'Ditar'}
+              hint={
+                recState === 'recording'
+                  ? 'Encerra e transcreve'
+                  : 'Fala vira texto no cursor'
+              }
+              icon={
+                recState === 'transcribing' ? (
+                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                ) : recState === 'recording' ? (
+                  <MicOff className="h-[18px] w-[18px]" />
+                ) : (
+                  <Mic className="h-[18px] w-[18px]" />
+                )
+              }
+              onClick={() =>
+                recState === 'recording' ? stopRecording() : void startRecording()
+              }
+              disabled={recState === 'transcribing'}
+              // Sem rótulo: o microfone é um dos poucos símbolos que a HIG
+              // considera reconhecível, e a largura vale mais para as duas
+              // ações de IA, que não têm símbolo estabelecido nenhum.
+              showLabel={recState === 'recording'}
+              shortcut={SC.dictate}
+              tone={recState === 'recording' ? '#ff5555' : '#50fa7b'}
+              className={recState === 'recording' ? 'rec-pulse' : undefined}
+              data-tour="mic"
+            />
+            {/*
+              As duas ações de IA são simétricas e fáceis de confundir sem
+              rótulo: uma escreve do zero, a outra reescreve o que já existe.
+              Lâmpada e varinha não carregam essa diferença.
+            */}
+            <ToolbarButton
+              label="Pedir sugestão"
+              hint="A IA escreve um texto novo a partir do seu pedido"
+              icon={<Lightbulb className="h-[18px] w-[18px]" />}
+              onClick={openAskSuggestion}
+              showLabel
+              shortcut={SC.askSuggestion}
+              tone="#ff79c6"
+              data-tour="ask-suggestion"
+            />
+            <ToolbarButton
+              label="Editar com IA"
+              hint="Reescreve o que já está na folha; prévia antes de aplicar"
+              icon={<Wand2 className="h-[18px] w-[18px]" />}
+              onClick={openAiEdit}
+              showLabel
+              shortcut={SC.aiEdit}
+              tone="#bd93f9"
+              data-tour="ai-edit"
+            />
+          </div>
 
-          {/* chave */}
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Chave da OpenAI"
-            onClick={() => setKeyDialogOpen(true)}
-            className="relative h-9 w-9 flex-none text-[#bd93f9] hover:bg-[#44475a] hover:text-[#bd93f9]"
+          {/*
+            GRUPO 3 — Exibição. Controle segmentado, que é o caso que a HIG
+            endossa: "Consider a segmented control when it's important to group
+            functions together, or to clearly show their selection state."
+            Três segmentos (o teto é "about five to seven"), largura igual, e
+            rótulo ao lado do símbolo a partir de lg — a orientação de macOS
+            pede rótulo junto do símbolo E tooltip por segmento.
+          */}
+          <div
+            className="toolbar-group ml-auto"
+            role="group"
+            aria-label="Modo de exibição"
           >
-            <KeyRound className="h-5 w-5" />
-            <span className={`absolute bottom-1 right-1 h-2 w-2 rounded-full ${keyDot}`} />
-          </Button>
+            {MODES.map((m) => (
+              <ToolbarButton
+                key={m.id}
+                label={m.label}
+                hint={m.hint}
+                icon={<m.icon className="h-[18px] w-[18px]" />}
+                onClick={() => setMode(m.id)}
+                active={mode === m.id}
+                shortcut={m.shortcut}
+                showLabel={wideDesktop}
+                className="flex-1 justify-center"
+              />
+            ))}
+          </div>
+
+          {/* Zona final: fica visível em qualquer largura. */}
+          <div className="flex flex-none items-center gap-1">
+            <Popover open={attachOpen} onOpenChange={setAttachOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={
+                    attachCount > 0
+                      ? `Arquivos de contexto (${attachCount})`
+                      : 'Arquivos de contexto'
+                  }
+                  className="relative flex h-9 w-9 flex-none items-center justify-center rounded-lg text-[#ffb86c] transition-colors hover:bg-[#44475a]"
+                >
+                  <Paperclip className="h-[18px] w-[18px]" />
+                  {attachCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#ffb86c] px-1 text-[10px] font-bold text-[#282a36]">
+                      {attachCount}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-80 border-[#44475a] bg-[#282a36] p-3 text-[#f8f8f2]"
+              >
+                <AttachmentsPanel
+                  attachments={active?.attachments ?? []}
+                  onRemove={removeAttachment}
+                  onAdd={() => fileInputRef.current?.click()}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/*
+              Menu Mais. A HIG: "Add a More menu to contain additional actions.
+              Prioritize less important actions for inclusion in the More menu."
+              No navegador não existe overflow automático, então o corte é
+              declarado aqui.
+            */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Mais ações"
+                  data-tour="help"
+                  className="flex h-9 w-9 flex-none items-center justify-center rounded-lg text-[#f8f8f2] transition-colors hover:bg-[#44475a]"
+                >
+                  <MoreHorizontal className="h-[18px] w-[18px]" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-64 border-[#44475a] bg-[#282a36] text-[#f8f8f2]"
+              >
+                <DropdownMenuItem onClick={() => setPaletteOpen(true)} className={MI}>
+                  <Command className="mr-2 h-4 w-4 text-[#bd93f9]" />
+                  Todos os comandos
+                  <MenuHint s={SC.palette} />
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[#44475a]" />
+
+                <DropdownMenuItem
+                  onClick={() => void requestCompletion(true)}
+                  disabled={loading}
+                  className={MI}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4 text-[#8be9fd]" />
+                  Gerar sugestão de novo
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setGithubDialogOpen(true)}
+                  className={MI}
+                >
+                  <Github className="mr-2 h-4 w-4 text-[#f8f8f2]" />
+                  Contexto do GitHub
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[#44475a]" />
+
+                <DropdownMenuItem
+                  onClick={() => active && downloadNote(active, 'md')}
+                  className={MI}
+                >
+                  <FileText className="mr-2 h-4 w-4 text-[#bd93f9]" />
+                  Baixar como Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => active && downloadNote(active, 'txt')}
+                  className={MI}
+                >
+                  <FileType2 className="mr-2 h-4 w-4 text-[#8be9fd]" />
+                  Baixar como texto
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => void handleDownloadImage()}
+                  className={MI}
+                >
+                  <Image className="mr-2 h-4 w-4 text-[#ff79c6]" />
+                  Baixar como imagem
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => void handleDownloadPdf()}
+                  className={MI}
+                >
+                  <FileDown className="mr-2 h-4 w-4 text-[#ff5555]" />
+                  Baixar como PDF
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[#44475a]" />
+
+                <DropdownMenuItem
+                  onClick={() => void toggleFullscreen()}
+                  className={MI}
+                >
+                  {fullscreenActive ? (
+                    <Minimize2 className="mr-2 h-4 w-4 text-[#f1fa8c]" />
+                  ) : (
+                    <Maximize2 className="mr-2 h-4 w-4 text-[#f1fa8c]" />
+                  )}
+                  {fullscreenActive ? 'Sair da tela cheia' : 'Tela cheia'}
+                  <MenuHint s={SC.fullscreen} />
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setKeyDialogOpen(true)} className={MI}>
+                  <KeyRound className="mr-2 h-4 w-4 text-[#bd93f9]" />
+                  Chave da OpenAI
+                  <span
+                    className={`ml-auto h-2 w-2 flex-none rounded-full ${keyDot}`}
+                  />
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[#44475a]" />
+
+                <DropdownMenuItem onClick={() => tour.restart()} className={MI}>
+                  <HelpCircle className="mr-2 h-4 w-4 text-[#8be9fd]" />
+                  Refazer o tutorial
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={deletePage}
+                  disabled={busy}
+                  className="cursor-pointer text-[#ff5555] focus:bg-[#ff5555]/15 focus:text-[#ff5555]"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Arrancar esta folha
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* indicador de página no mobile */}
@@ -1261,7 +1570,7 @@ export default function Home() {
       </header>
 
       {/* ================= Folha full-page com flip CSS ================= */}
-      <div className="stage-wrap">
+      <div className="stage-wrap" data-tour="editor">
         {dbReady && active && (
           <PageSheet
             ref={pageRef}
@@ -1364,9 +1673,16 @@ export default function Home() {
         <div className="flex-1" />
 
         {!isTouch && (
-          <span className="hidden whitespace-nowrap lg:inline">
-            Tab aceita · Esc dispensa · Ctrl+Espaço completa
-          </span>
+          <button
+            onClick={() => setPaletteOpen(true)}
+            // lg, não md: em md a dica empurrava o seletor de modelo para fora
+            // da barra de status.
+            className="hidden whitespace-nowrap rounded px-1.5 py-0.5 transition-colors hover:bg-[#44475a] hover:text-[#f8f8f2] lg:inline"
+          >
+            Tab aceita · Esc dispensa ·{' '}
+            <span className="text-[#8be9fd]">{formatShortcut(SC.palette)}</span> abre
+            os comandos
+          </button>
         )}
 
         <div className="flex items-center gap-0.5">
@@ -1412,7 +1728,8 @@ export default function Home() {
             onClick={() =>
               recState === 'recording' ? stopRecording() : void startRecording()
             }
-            title={recState === 'recording' ? 'Parar gravação' : 'Ditar com Whisper'}
+            aria-label={recState === 'recording' ? 'Parar gravação' : 'Ditar'}
+            data-tour="mic"
             disabled={recState === 'transcribing'}
             className={`flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95 disabled:opacity-50 ${
               recState === 'recording'
@@ -1430,7 +1747,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => void undo()}
-            title="Desfazer"
+            aria-label="Desfazer"
             disabled={!canUndo}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8be9fd]/15 text-[#8be9fd] transition-transform active:scale-95 disabled:opacity-30"
           >
@@ -1438,7 +1755,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => void redo()}
-            title="Refazer"
+            aria-label="Refazer"
             disabled={!canRedo}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8be9fd]/15 text-[#8be9fd] transition-transform active:scale-95 disabled:opacity-30"
           >
@@ -1447,7 +1764,7 @@ export default function Home() {
           {suggestion ? (
             <button
               onClick={() => acceptSuggestion()}
-              title="Aceitar sugestão"
+              aria-label="Aceitar sugestão"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9] text-[#282a36] transition-transform active:scale-95"
             >
               <CornerDownLeft className="h-5 w-5" />
@@ -1457,7 +1774,8 @@ export default function Home() {
               onClick={() => {
                 openAiEdit()
               }}
-              title="Editar com IA"
+              aria-label="Editar com IA"
+              data-tour="ai-edit"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9]/15 text-[#bd93f9] transition-transform active:scale-95"
             >
               <Wand2 className="h-5 w-5" />
@@ -1742,8 +2060,8 @@ export default function Home() {
               <button
                 className="drawer-btn"
                 onClick={() => {
-                  reopenTutorial()
                   setDrawerOpen(false)
+                  tour.restart()
                 }}
               >
                 <HelpCircle className="h-5 w-5 text-[#8be9fd]" />
@@ -1823,11 +2141,24 @@ export default function Home() {
         />
       )}
 
-      <TutorialDialog
-        open={tutorialOpen}
-        onOpenChange={setTutorialOpen}
-        onFinish={markTutorialSeen}
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        commands={commands}
       />
+
+      {tour.active && tour.step && (
+        <TourOverlay
+          step={tour.step}
+          index={tour.index}
+          total={tour.total}
+          isTouch={isTouch}
+          justDone={tour.justDone}
+          onNext={tour.next}
+          onBack={tour.back}
+          onSkip={tour.skipAll}
+        />
+      )}
 
       <AiEditDialog
         open={aiEditOpen}
