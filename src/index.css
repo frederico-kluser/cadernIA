@@ -32,6 +32,10 @@ body,
   color: var(--dracula-fg);
   font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
   overscroll-behavior: none;
+  /* o único scroll do app é o da folha (.stage-wrap): sem isto, qualquer
+     estouro (teclado virtual, transição de dvh, scrollIntoView do textarea)
+     criava um segundo scroll na página do navegador */
+  overflow: hidden;
 }
 
 * {
@@ -59,6 +63,9 @@ body,
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  /* cinto e suspensório junto do overflow do body: o app nunca rola,
+     só a folha (.stage-wrap) */
+  overflow: hidden;
 }
 
 .desk {
@@ -792,14 +799,20 @@ body,
   .page-leave-content::before {
     display: none;
   }
+  /* o cabeçalho é sticky: o que alinha com o texto é o padding, não `left` */
   .page-header {
     left: 18px;
+    padding-left: 18px;
+    padding-right: 12px;
   }
   .ghost-editor-mirror,
   .ghost-editor-input {
     padding-left: 18px;
+    /* folga para a barra flutuante de ações não cobrir o fim do texto */
+    padding-bottom: 120px;
   }
   .md-preview {
     padding-left: 18px;
+    padding-bottom: 120px;
   }
 }

@@ -19,8 +19,15 @@ const MAX_AFTER = 2000
 const MAX_ATTACH_TOTAL = 8000
 const MAX_BRIEFING = 2000
 
-function isReasoningModel(model: string): boolean {
-  return /^o\d/.test(model)
+/**
+ * Modelos com parâmetros restritos na API de chat: a família de raciocínio
+ * (o1, o3, o4…) e a família GPT-5 não aceitam `temperature` (só o padrão 1)
+ * e exigem `max_completion_tokens` em vez de `max_tokens`. Sem este filtro a
+ * API responde "Unsupported value: 'temperature'…" — era o que quebrava o
+ * fluxo do microfone logo após a transcrição.
+ */
+function isRestrictedModel(model: string): boolean {
+  return /^(o\d|gpt-5)/.test(model)
 }
 
 interface ChatOptions {
@@ -44,12 +51,12 @@ async function chatCompletion({
   signal,
   trim = true,
 }: ChatOptions): Promise<string> {
-  const reasoning = isReasoningModel(model)
+  const restricted = isRestrictedModel(model)
   const body: Record<string, unknown> = {
     model,
     messages,
   }
-  if (reasoning) {
+  if (restricted) {
     if (maxTokens) body.max_completion_tokens = maxTokens
   } else {
     if (temperature !== undefined) body.temperature = temperature
@@ -231,9 +238,9 @@ export async function fetchGuidedSuggestion(
       { role: 'user', content: buildGuidedUserPrompt(req) },
     ],
     temperature: 0.7,
-    // Em modelos de raciocínio o teto vira max_completion_tokens, que inclui os
+    // Em modelos restritos o teto vira max_completion_tokens, que inclui os
     // tokens de raciocínio: um limite baixo faz a API devolver conteúdo vazio.
-    maxTokens: isReasoningModel(req.model) ? 4000 : 1200,
+    maxTokens: isRestrictedModel(req.model) ? 4000 : 1200,
     signal: req.signal,
     trim: false,
   })
@@ -299,9 +306,6 @@ export interface ApplyInstructionRequest {
 }
 
 export async function applyInstruction(req: ApplyInstructionRequest): Promise<string> {
-  const reasoning = isReasoningModel(req.model)
-  const maxTokens = reasoning ? 4096 : 4096
-
   let system: string
   let user: string
 
@@ -329,7 +333,7 @@ export async function applyInstruction(req: ApplyInstructionRequest): Promise<st
       { role: 'user', content: user },
     ],
     temperature: 0.2,
-    maxTokens,
+    maxTokens: 4096,
   })
 }
 

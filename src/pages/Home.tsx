@@ -1438,7 +1438,7 @@ export default function Home() {
               </PopoverTrigger>
               <PopoverContent
                 align="end"
-                className="w-80 border-[#44475a] bg-[#282a36] p-3 text-[#f8f8f2]"
+                className="w-80 max-w-[calc(100vw-2rem)] border-[#44475a] bg-[#282a36] p-3 text-[#f8f8f2]"
               >
                 <AttachmentsPanel
                   attachments={active?.attachments ?? []}
@@ -1761,24 +1761,24 @@ export default function Home() {
           >
             <Redo2 className="h-5 w-5" />
           </button>
-          {suggestion ? (
+          <button
+            onClick={() => {
+              openAiEdit()
+            }}
+            aria-label="Editar com IA"
+            data-tour="ai-edit"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9]/15 text-[#bd93f9] transition-transform active:scale-95"
+          >
+            <Wand2 className="h-5 w-5" />
+          </button>
+          {/* aceitar a sugestão fantasma: botão próprio, não substitui o Editar com IA */}
+          {suggestion && (
             <button
               onClick={() => acceptSuggestion()}
               aria-label="Aceitar sugestão"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9] text-[#282a36] transition-transform active:scale-95"
             >
               <CornerDownLeft className="h-5 w-5" />
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                openAiEdit()
-              }}
-              aria-label="Editar com IA"
-              data-tour="ai-edit"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9]/15 text-[#bd93f9] transition-transform active:scale-95"
-            >
-              <Wand2 className="h-5 w-5" />
             </button>
           )}
         </div>
@@ -1788,7 +1788,7 @@ export default function Home() {
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetContent
           side="left"
-          className="w-80 overflow-y-auto border-r border-[#44475a] bg-[#21222c] p-0 text-[#f8f8f2]"
+          className="w-80 max-w-[calc(100vw-2rem)] overflow-y-auto border-r border-[#44475a] bg-[#21222c] p-0 text-[#f8f8f2]"
         >
           <SheetHeader className="border-b border-[#44475a] px-4 py-4">
             <SheetTitle className="flex items-center gap-2 text-[#f8f8f2]">

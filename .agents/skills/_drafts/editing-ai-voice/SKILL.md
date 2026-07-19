@@ -28,7 +28,7 @@ The user wants to change how voice input is handled, how Whisper transcripts are
 
 - `classifyUtterance` uses `response_format: { type: 'json_object' }` and a very low temperature (`0`).
 - `applyInstruction` uses `temperature: 0.2` and up to `4096` output tokens.
-- Reasoning models (`/^o\d/`) are detected automatically and use `max_completion_tokens` instead of `max_tokens`; `temperature` is omitted for them in the shared `chatCompletion` helper (`lib/openai.ts:22`).
+- Restricted models — reasoning (`o1`, `o3`, `o4…`) **and the whole GPT-5 family** (`gpt-5.*`) — are detected by `isRestrictedModel` (`/^(o\d|gpt-5)/`): they reject `temperature` (only the default 1 is allowed) and require `max_completion_tokens` instead of `max_tokens`; the shared `chatCompletion` helper omits/swaps both automatically (`lib/openai.ts:22`). Sending `temperature` to a `gpt-5.*` model was what broke the voice flow right after Whisper transcription ("Unsupported value: 'temperature'…").
 
 ### Key behaviors
 
@@ -40,7 +40,7 @@ The user wants to change how voice input is handled, how Whisper transcripts are
 
 - `classifyUtterance` falls back to `{ type: 'transcription', payload: transcript }` if the model returns malformed JSON.
 - `applyInstruction` returns plain text; the caller is responsible for replacing either the selection or the full document.
-- Keep the model-selector global in `Home.tsx` in sync with the reasoning-model detection in `lib/openai.ts`.
+- Keep the model-selector global in `Home.tsx` in sync with the restricted-model detection in `lib/openai.ts` (every `gpt-5*` or `o*` id added there is automatically restricted).
 
 ## Procedure
 
