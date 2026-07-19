@@ -44,7 +44,8 @@ These are already guaranteed by config; point to the file rather than re-describ
 ### Stack gotchas
 
 - `vite.config.ts:8` sets `base: './'`, which produces relative asset paths in production. Deep-linking to client-side routes needs care.
-- `kimi-plugin-inspect-react` is loaded only in development (`vite.config.ts:9`).
+- **Use Yarn, never `npm install`**. The project uses Yarn 4 with `nodeLinker: node-modules` (`.yarnrc.yml`). Running `npm i` creates a conflicting `package-lock.json` and can desynchronize dependencies.
+- **`kimi-plugin-inspect-react` is removed**. Version 1.0.3 calls `@babel/plugin-proposal-decorators` without the required `version` option, which throws `[plugin:vite-plugin-inspect-dom-simple] [BABEL] ... The decorators plugin requires a 'version' option`. If reintroduced, ensure the plugin passes `version: '2023-11'` or `version: 'legacy'` to the Babel decorators plugin.
 
 ## References
 
