@@ -16,7 +16,7 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
 ### Architecture
 
 - `GhostEditor.tsx` is a transparent `<textarea>` with a synchronized `<div>` mirror that renders the suggestion as dimmed "ghost" text (`components/GhostEditor.tsx:14-41`).
-- `Home.tsx` owns the completion orchestration: debounce, abort, cache lookup, OpenAI call, and ghost display (`pages/Home.tsx:296-330`).
+- `Home.tsx` owns the completion orchestration: debounce, abort, cache lookup, OpenAI call, ghost display, and an undo/redo stack for accepted suggestions / AI edits / voice insertions (`pages/Home.tsx:388-481`, `pages/Home.tsx:330-387`).
 - `lib/suggestionCache.ts` is a `localStorage` LRU keyed by a hash of 400 chars before + 60 chars after the cursor (`lib/suggestionCache.ts:7-8`).
 - `lib/openai.ts` contains `fetchCompletion`, which is **non-streaming** (`lib/openai.ts:100-124`).
 
@@ -28,11 +28,13 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
   - `MAX_ATTACH_TOTAL = 8000` chars total for attachments.
 - Completion parameters: `temperature: 0.3`, `max_tokens: 180` (`lib/openapi.ts:112-113`).
 - Cache: max 120 entries, values capped at 600 chars (`lib/suggestionCache.ts:7-8`).
-- Sanitization strips overlaps of **4+** chars (`lib/openai.ts:88-94`).
+- Sanitization strips overlaps of **4+** chars and trims only the **end** of the suggestion, preserving leading whitespace (`lib/openai.ts:138-156`).
+- `fetchCompletion` asks `chatCompletion` **not** to trim the raw model output, so a leading space in the continuation is kept (`lib/openai.ts:158-170`).
 
 ### Key behaviors
 
-- `Tab` accepts the suggestion; `Esc` dismisses; `Ctrl/Cmd+Space|Enter` triggers manually; otherwise two-space tab insertion (`components/GhostEditor.tsx:55-78`).
+- `Tab` accepts the suggestion once per keypress (repeat events and a 120 ms cooldown prevent double acceptance); `Esc` dismisses; `Ctrl/Cmd+Space|Enter` triggers manually; otherwise two-space tab insertion (`components/GhostEditor.tsx:164-191`).
+- `Ctrl/Cmd+Z` undoes the last accepted suggestion (and other recorded edits), `Ctrl/Cmd+Shift+Z` / `Ctrl/Cmd+Y` redoes; mobile shows undo/redo icons (`pages/Home.tsx:330-387`, `components/GhostEditor.tsx:164-191`).
 - Every new completion aborts the previous `AbortController` (`pages/Home.tsx:296-298`).
 - After the API returns, a guard compares `cursorRef.current === pos && textRef.current === full` to avoid stale suggestions (`pages/Home.tsx:317`).
 - Errors surface via `toast` (`pages/Home.tsx:325`). Aborted requests are ignored.

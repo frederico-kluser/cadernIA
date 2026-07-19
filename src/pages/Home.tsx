@@ -12,6 +12,7 @@ import {
   FileType2,
   Ghost,
   Github,
+  HelpCircle,
   KeyRound,
   Loader2,
   Maximize2,
@@ -22,9 +23,11 @@ import {
   Paperclip,
   Pencil,
   Plus,
+  Redo2,
   RefreshCw,
   Sparkles,
   Trash2,
+  Undo2,
   Wand2,
 } from 'lucide-react'
 import GhostEditor, {
@@ -93,6 +96,11 @@ interface Suggestion {
   source: 'api' | 'memoria'
 }
 
+interface HistoryItem {
+  content: string
+  cursor: number
+}
+
 type ViewMode = 'edit' | 'split' | 'preview'
 type RecState = 'idle' | 'recording' | 'transcribing'
 
@@ -128,6 +136,10 @@ export default function Home() {
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null)
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<ViewMode>('edit')
+  const [history, setHistory] = useState<{ past: HistoryItem[]; future: HistoryItem[] }>({
+    past: [],
+    future: [],
+  })
   const [fontSize, setFontSize] = useState(
     () => Number(localStorage.getItem(LS.fontSize)) || 17,
   )
@@ -182,6 +194,9 @@ export default function Home() {
       (window.matchMedia?.('(pointer: coarse)').matches || 'ontouchstart' in window),
     [],
   )
+
+  const canUndo = history.past.length > 0
+  const canRedo = history.future.length > 0
 
   const active = useMemo(
     () => projects.find((p) => p.id === activeId) ?? null,
@@ -322,7 +337,48 @@ export default function Home() {
     setSuggestion(null)
     setCursor(0)
     cursorRef.current = 0
+    setHistory({ past: [], future: [] })
   }, [])
+
+  // ---------- histórico (undo/redo) ----------
+  const recordHistory = useCallback(() => {
+    const current = { content: textRef.current, cursor: cursorRef.current }
+    setHistory((h) => {
+      const last = h.past[h.past.length - 1]
+      if (last && last.content === current.content && last.cursor === current.cursor) return h
+      return { past: [...h.past, current], future: [] }
+    })
+  }, [])
+
+  const undo = useCallback(() => {
+    setHistory((h) => {
+      if (h.past.length === 0) return h
+      const prev = h.past[h.past.length - 1]
+      const current = { content: textRef.current, cursor: cursorRef.current }
+      textRef.current = prev.content
+      cursorRef.current = prev.cursor
+      updateActive({ content: prev.content })
+      setCursor(prev.cursor)
+      setSuggestion(null)
+      editorRef.current?.setCursor(prev.cursor)
+      return { past: h.past.slice(0, -1), future: [...h.future, current] }
+    })
+  }, [updateActive])
+
+  const redo = useCallback(() => {
+    setHistory((h) => {
+      if (h.future.length === 0) return h
+      const next = h.future[h.future.length - 1]
+      const current = { content: textRef.current, cursor: cursorRef.current }
+      textRef.current = next.content
+      cursorRef.current = next.cursor
+      updateActive({ content: next.content })
+      setCursor(next.cursor)
+      setSuggestion(null)
+      editorRef.current?.setCursor(next.cursor)
+      return { past: [...h.past, current], future: h.future.slice(0, -1) }
+    })
+  }, [updateActive])
 
   // ---------- editar com IA ----------
   const openAiEdit = useCallback(() => {
@@ -362,6 +418,7 @@ export default function Home() {
 
   const handleAiEditApply = useCallback(() => {
     if (!aiEditPreview) return
+    recordHistory()
     if (!aiEditSelection) {
       const next = aiEditPreview
       textRef.current = next
@@ -382,7 +439,7 @@ export default function Home() {
     setAiEditOpen(false)
     setAiEditPreview(null)
     toast.success('Edição aplicada.')
-  }, [aiEditPreview, aiEditSelection, updateActive])
+  }, [aiEditPreview, aiEditSelection, recordHistory, updateActive])
 
   // ---------- autocomplete ----------
   const requestCompletion = useCallback(
@@ -454,6 +511,7 @@ export default function Home() {
   }, [requestCompletion])
 
   const acceptSuggestion = useCallback(() => {
+    recordHistory()
     setSuggestion((s) => {
       if (!s) return null
       const pos = cursorRef.current
@@ -467,7 +525,7 @@ export default function Home() {
       return null
     })
     scheduleCompletion()
-  }, [scheduleCompletion, updateActive])
+  }, [recordHistory, scheduleCompletion, updateActive])
 
   // ---------- handlers do editor ----------
   const handleChange = useCallback(
@@ -620,10 +678,12 @@ export default function Home() {
             textRef.current,
           )
           if (classified.type === 'transcription') {
+            recordHistory()
             editorRef.current?.insertAtCursor(classified.payload)
             toast.success('Transcrição inserida no cursor.')
           } else {
             toast.info('Comando de edição detectado.')
+            recordHistory()
             const edited = await applyInstruction({
               apiKey,
               model,
@@ -649,7 +709,7 @@ export default function Home() {
     } catch {
       toast.error('Não foi possível acessar o microfone. Verifique a permissão.')
     }
-  }, [apiKey, model, updateActive])
+  }, [apiKey, model, recordHistory, updateActive])
 
   // ---------- anexos (por página) ----------
   const handleFiles = useCallback(
@@ -1039,6 +1099,10 @@ export default function Home() {
                 onAcceptSuggestion={acceptSuggestion}
                 onDismissSuggestion={() => setSuggestion(null)}
                 onManualTrigger={() => void requestCompletion(false)}
+                onUndo={undo}
+                onRedo={redo}
+                canUndo={canUndo}
+                canRedo={canRedo}
                 fontSize={fontSize}
               />
             )}
@@ -1057,6 +1121,10 @@ export default function Home() {
                     onAcceptSuggestion={acceptSuggestion}
                     onDismissSuggestion={() => setSuggestion(null)}
                     onManualTrigger={() => void requestCompletion(false)}
+                    onUndo={undo}
+                    onRedo={redo}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
                     fontSize={fontSize}
                   />
                 </div>
@@ -1191,6 +1259,22 @@ export default function Home() {
             ) : (
               <Mic className="h-5 w-5" />
             )}
+          </button>
+          <button
+            onClick={() => void undo()}
+            title="Desfazer"
+            disabled={!canUndo}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8be9fd]/15 text-[#8be9fd] transition-transform active:scale-95 disabled:opacity-30"
+          >
+            <Undo2 className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => void redo()}
+            title="Refazer"
+            disabled={!canRedo}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8be9fd]/15 text-[#8be9fd] transition-transform active:scale-95 disabled:opacity-30"
+          >
+            <Redo2 className="h-5 w-5" />
           </button>
           <button
             onClick={() => {
