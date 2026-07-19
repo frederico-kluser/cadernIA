@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 export type LeaveDirection = 'next' | 'prev'
-export type LeaveKind = 'flip' | 'tear'
+export type LeaveKind = 'slide' | 'tear'
 
 export interface LeavingPage {
   header: ReactNode
@@ -74,7 +74,10 @@ export default function PageSheet({
         }
       >
         {/* folha atual (sempre visível) */}
-        <div className="page-current" ref={pageRef}>
+        <div
+          className={`page-current ${leaving ? `entering ${leaving.direction}` : ''}`}
+          ref={pageRef}
+        >
           {renderHoles()}
           <div className="page-header">{header}</div>
           <div className="page-body">{children}</div>
@@ -87,17 +90,13 @@ export default function PageSheet({
             onAnimationEnd={onLeavingEnd}
             aria-hidden
           >
-            <div className="page-leave-front">
+            <div className="page-leave-content">
               {renderHoles()}
               <div className="page-header">{leaving.header}</div>
               <div
                 className="page-leave-body ghost-editor-mirror"
                 dangerouslySetInnerHTML={{ __html: leaving.bodyHtml }}
               />
-            </div>
-            <div className="page-leave-back">
-              {renderHoles()}
-              <div className="page-leave-body ghost-editor-mirror" />
             </div>
           </div>
         )}

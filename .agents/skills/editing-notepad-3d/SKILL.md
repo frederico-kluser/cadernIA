@@ -1,6 +1,6 @@
 ---
 name: editing-notepad-3d
-description: Guides changes to the CSS-only notebook page, full-page sheet layout, and page-flip/tear animations. Use whenever the user touches PageSheet.tsx, the page CSS in index.css, or the sheet animation flow in Home.tsx.
+description: Guides changes to the CSS-only notebook page, full-page sheet layout, and page-slide/tear animations. Use whenever the user touches PageSheet.tsx, the page CSS in index.css, or the sheet animation flow in Home.tsx.
 metadata:
   type: task
   verification_signal: yarn build in project root
@@ -9,7 +9,7 @@ metadata:
 
 ## When to use
 
-The user wants to change the notebook page visual, the full-page sheet layout, the page-flip/tear animation, or how the editor is layered inside the sheet.
+The user wants to change the notebook page visual, the full-page sheet layout, the page-slide/tear animation, or how the editor is layered inside the sheet.
 
 ## Injected knowledge
 
@@ -26,19 +26,19 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 
 ### Key flow
 
-- `Home.startFlip` captures the current page header (`pageHeader`) and a static HTML mirror (`staticMirrorHtml(active.content)`), sets the new `activeId`, and stores the leaving info in `leaving` state (`pages/Home.tsx`).
-- `PageSheet` renders `.page-leaving` with two faces: `.page-leave-front` (old content) and `.page-leave-back` (ruled blank page). CSS 3D transforms animate the flip (`components/PageSheet.tsx`).
+- `Home.startPageTransition` captures the current page header (`pageHeader`) and a static HTML mirror (`staticMirrorHtml(active.content)`), sets the new `activeId`, and stores the leaving info in `leaving` state (`pages/Home.tsx`).
+- `PageSheet` renders the current page and, during navigation, an animated leaving page on top of it. The leaving page is a single `.page-leave-content` layer; the incoming page gets `.page-current.entering.{next,prev}` and slides in from the opposite side (`components/PageSheet.tsx`).
 - The leaving layer fires `onAnimationEnd` to clear state, but `Home.tsx` also clears it via `setTimeout` as a fallback.
 
 ### Timing constants
 
-- `src/index.css`: `flip-next` and `flip-prev` animations run for **0.85 s**; `tear-out` runs for **0.7 s**.
-- `pages/Home.tsx`: cleanup timeout is **900 ms** for flip and **700 ms** for tear. Keep these in sync with the CSS durations.
+- `src/index.css`: `slide-in-right`, `slide-in-left`, `slide-out-right`, and `slide-out-left` animations run for **0.45 s**; `tear-out` runs for **0.7 s**.
+- `pages/Home.tsx`: cleanup timeout is **450 ms** for slide and **700 ms** for tear. Keep these in sync with the CSS durations.
 
 ### Gotchas
 
-- `pageHeader` is memoized with `useMemo` and must be declared **before** `startFlip` to satisfy the React hooks immutability lint rule (`react-hooks/immutability`).
-- The leaving front face reuses `.ghost-editor-mirror` styling, so it inherits the ruled-line background. The back face uses a CSS ruled gradient.
+- `pageHeader` is memoized with `useMemo` and must be declared **before** `startPageTransition` to satisfy the React hooks immutability lint rule (`react-hooks/immutability`).
+- The leaving page content reuses `.ghost-editor-mirror` styling, so it inherits the ruled-line background.
 - **Text-to-rule alignment**: the ruled line must hit the text baseline, not the bottom of the line box. Place the rule at the top of each `line-height` period (`repeating-linear-gradient` rule from `0` to `1px`) and offset it with `background-position: 0 calc(var(--editor-lh) / 2 + var(--editor-font-size) * 0.334)`. The factor `0.334` comes from Fira Code's metrics (`unitsPerEm=2000`, `sTypoAscender=1980`, `sTypoDescender=-644`) and places the rule exactly on the baseline. Keep `--editor-lh` unrounded to avoid drift across many lines (`src/index.css`, `src/components/GhostEditor.tsx`, `src/components/PageSheet.tsx`).
 - **`padding-top` do editor = `(k + 0.5) * lh + 0.375 * fs`**: a baseline da
   linha *n* fica em `padding-top + lh/2 + fs*0.334 + n*lh` e as réguas em
@@ -55,7 +55,7 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
   padding de apenas um dos dois separa o cursor do texto visível — foi o que o
   `padding-top: 24px` do `14ba0e3` causou (mirror em 24px, textarea em
   `3.5*lh` = 168px). Qualquer ajuste de padding vai na regra compartilhada.
-- **Flow-layout pages and flip/tear height**: because `.page-current` grows with content, `PageSheet` captures the leaving page's height in a ref (`lastHeightRef`) while idle and applies it as `--leaving-height` / `min-height` during the animation. This prevents the leaving layer from collapsing if the incoming page is shorter (`src/components/PageSheet.tsx`).
+- **Flow-layout pages and slide/tear height**: because `.page-current` grows with content, `PageSheet` captures the leaving page's height in a ref (`lastHeightRef`) while idle and applies it as `--leaving-height` / `min-height` during the animation. This prevents the leaving layer from collapsing if the incoming page is shorter (`src/components/PageSheet.tsx`).
 - **No internal editor scroll**: `.ghost-editor-input` uses `overflow: hidden` and its height is synchronized to `scrollHeight` after every value change. The scroll container is `.stage-wrap`, not the editor (`src/components/GhostEditor.tsx`).
 - **Markdown preview also flows**: `.md-preview` uses `flex: 1`, `min-height: 100%`, and the same ruled-line background so it grows with rendered Markdown inside the page (`src/index.css`).
 - `crypto.randomUUID()` is used for project/attachment IDs and requires secure context.
@@ -63,7 +63,7 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 ## Procedure
 
 1. Load `working-in-ghostwriter` first.
-2. Determine whether the change affects the sheet layout (CSS), the animation (CSS keyframes), or the flip trigger flow (`Home.tsx`).
+2. Determine whether the change affects the sheet layout (CSS), the animation (CSS keyframes), or the page-transition trigger flow (`Home.tsx`).
 3. If changing animation timing, update both the CSS keyframe duration and the cleanup timeout in `Home.tsx`.
 4. Verify the sheet still fills the stage and the editor remains usable on mobile and desktop.
 5. Run `yarn build` in the project root.
@@ -72,7 +72,7 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 
 - `src/components/PageSheet.tsx` — page component and leaving-page animation layer.
 - `src/index.css` — `.page-perspective`, `.page-stack`, `.page-current`, `.page-leaving`, and keyframe animations.
-- `src/pages/Home.tsx` — `startFlip`, `pageHeader` memoization, and `PageSheet` usage.
+- `src/pages/Home.tsx` — `startPageTransition`, `pageHeader` memoization, and `PageSheet` usage.
 
 ## <evolution>
 

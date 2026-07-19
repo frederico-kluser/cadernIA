@@ -586,9 +586,9 @@ export default function Home() {
     )
   }, [active, activeIndex, projects.length, updateActive])
 
-  // ---------- navegação de páginas (flip CSS) ----------
-  const startFlip = useCallback(
-    (targetId: string, kind: 'flip' | 'tear' = 'flip') => {
+  // ---------- navegação de páginas (slide CSS) ----------
+  const startPageTransition = useCallback(
+    (targetId: string, kind: 'slide' | 'tear' = 'slide') => {
       if (!active) return
       const direction =
         projects.findIndex((p) => p.id === targetId) > activeIndex ? 'next' : 'prev'
@@ -601,7 +601,7 @@ export default function Home() {
       resetEditorState()
       setActiveId(targetId)
       // libera o estado após a animação CSS
-      window.setTimeout(() => setLeaving(null), kind === 'tear' ? 700 : 900)
+      window.setTimeout(() => setLeaving(null), kind === 'tear' ? 700 : 450)
     },
     [active, activeIndex, pageHeader, projects, resetEditorState],
   )
@@ -611,9 +611,9 @@ export default function Home() {
       if (busy || activeIndex < 0) return
       const target = projects[activeIndex + delta]
       if (!target) return
-      void startFlip(target.id)
+      void startPageTransition(target.id)
     },
-    [busy, activeIndex, projects, startFlip],
+    [busy, activeIndex, projects, startPageTransition],
   )
 
   const addPage = useCallback(() => {
@@ -621,9 +621,9 @@ export default function Home() {
     const p = newProject(`Página ${projects.length + 1}`)
     void dbPut(p)
     setProjects((prev) => [...prev, p])
-    void startFlip(p.id)
+    void startPageTransition(p.id)
     toast.success(`Nova página criada: ${p.name}`)
-  }, [busy, active, projects.length, startFlip])
+  }, [busy, active, projects.length, startPageTransition])
 
   // ---------- arrancar página ----------
   const deletePage = useCallback(() => {
@@ -645,8 +645,8 @@ export default function Home() {
       nextId = rest[Math.min(activeIndex, rest.length - 1)].id
     }
     void dbDelete(active.id)
-    void startFlip(nextId, 'tear')
-  }, [active, projects, activeIndex, startFlip])
+    void startPageTransition(nextId, 'tear')
+  }, [active, projects, activeIndex, startPageTransition])
 
   // ---------- voz (Whisper) ----------
   const stopRecording = useCallback(() => {
