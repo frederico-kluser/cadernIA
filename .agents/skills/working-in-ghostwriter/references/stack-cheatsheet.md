@@ -1,4 +1,4 @@
-# Stack Cheatsheet — cadernIA
+# Stack Cheatsheet — GhostWriter
 
 ## Versions
 

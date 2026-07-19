@@ -10,7 +10,6 @@ import {
   Eye,
   FileText,
   FileType2,
-  Ghost,
   Github,
   HelpCircle,
   KeyRound,
@@ -80,6 +79,7 @@ import {
   transcribeAudio,
   validateApiKey,
 } from '@/lib/openai'
+import { LOGO_URL } from '@/lib/brand'
 import { getCached, invalidate, setCached } from '@/lib/suggestionCache'
 import {
   dbDelete,
@@ -845,9 +845,9 @@ export default function Home() {
         </Button>
 
         <div className="flex flex-none items-center gap-2 pr-1">
-          <Ghost className="h-5 w-5 text-[#bd93f9]" />
+          <img src={LOGO_URL} alt="" className="h-5 w-5" />
           <span className="hidden text-sm font-bold sm:inline">
-            Cadern<span className="text-[#bd93f9]">IA</span>
+            Ghost<span className="text-[#bd93f9]">Writer</span>
           </span>
         </div>
 
@@ -1298,8 +1298,8 @@ export default function Home() {
         >
           <SheetHeader className="border-b border-[#44475a] px-4 py-4">
             <SheetTitle className="flex items-center gap-2 text-[#f8f8f2]">
-              <Ghost className="h-5 w-5 text-[#bd93f9]" />
-              Cadern<span className="text-[#bd93f9]">IA</span>
+              <img src={LOGO_URL} alt="" className="h-5 w-5" />
+              Ghost<span className="text-[#bd93f9]">Writer</span>
             </SheetTitle>
           </SheetHeader>
 

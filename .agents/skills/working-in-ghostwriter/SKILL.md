@@ -1,11 +1,11 @@
 ---
-name: working-in-cadernia
-description: Injects the cadernIA stack conventions before any React/Vite/Tailwind/shadcn task. Use whenever the user touches src/, package.json, vite.config.ts, tailwind.config.js, eslint.config.js, tsconfig files, or any build/lint/config change.
+name: working-in-ghostwriter
+description: Injects the GhostWriter stack conventions before any React/Vite/Tailwind/shadcn task. Use whenever the user touches src/, package.json, vite.config.ts, tailwind.config.js, eslint.config.js, tsconfig files, or any build/lint/config change.
 metadata:
   type: knowledge
   verification_signal: yarn lint && yarn build in project root
 ---
-# working-in-cadernia
+# working-in-ghostwriter
 
 ## When to use
 
@@ -40,6 +40,14 @@ These are already guaranteed by config; point to the file rather than re-describ
 - **Dynamic CSS custom properties** need a type assertion because React's style type is strict: `style={{ ['--editor-lh' as string]: ... }}` (`src/components/GhostEditor.tsx:121`).
 - **Inline handlers often cast `void`** to silence floating promises: `onClick={() => void requestCompletion(true)}` (`src/pages/Home.tsx:721`).
 - **shadcn/ui New York style, non-RSC, TSX**, base color `slate` — `components.json:3-5`.
+- **Marca centralizada em `src/lib/brand.ts`** (`LOGO_URL`). O app chama-se
+  **GhostWriter**; a wordmark na UI é `Ghost` + `Writer` realçado em
+  `#bd93f9`. Assets de `public/` precisam da URL montada com
+  `import.meta.env.BASE_URL` — `vite.config.ts:8` usa `base: './'`, então um
+  caminho absoluto (`/logo.png`) quebra em deploy sob subpasta.
+- **As chaves de armazenamento mantêm o prefixo legado `noteghost_`**
+  (`noteghost_db`, `noteghost_api_key`, …). Não renomear no rebrand: apagaria
+  os dados dos usuários existentes.
 
 ### Stack gotchas
 

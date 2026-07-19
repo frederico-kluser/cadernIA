@@ -40,6 +40,21 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 - `pageHeader` is memoized with `useMemo` and must be declared **before** `startFlip` to satisfy the React hooks immutability lint rule (`react-hooks/immutability`).
 - The leaving front face reuses `.ghost-editor-mirror` styling, so it inherits the ruled-line background. The back face uses a CSS ruled gradient.
 - **Text-to-rule alignment**: the ruled line must hit the text baseline, not the bottom of the line box. Place the rule at the top of each `line-height` period (`repeating-linear-gradient` rule from `0` to `1px`) and offset it with `background-position: 0 calc(var(--editor-lh) / 2 + var(--editor-font-size) * 0.334)`. The factor `0.334` comes from Fira Code's metrics (`unitsPerEm=2000`, `sTypoAscender=1980`, `sTypoDescender=-644`) and places the rule exactly on the baseline. Keep `--editor-lh` unrounded to avoid drift across many lines (`src/index.css`, `src/components/GhostEditor.tsx`, `src/components/PageSheet.tsx`).
+- **`padding-top` do editor = `(k + 0.5) * lh + 0.375 * fs`**: a baseline da
+  linha *n* fica em `padding-top + lh/2 + fs*0.334 + n*lh` e as réguas em
+  `lh/2 + fs*0.334 + k*lh`, logo `baseline − régua(k) = padding-top − k*lh`.
+  O termo `(k + 0.5) * lh` centra a **baseline** entre duas réguas; como o
+  corpo das minúsculas fica acima da baseline, isso deixa o texto opticamente
+  alto, e o `+ 0.375 * fs` desce até o corpo ficar centralizado. Hoje é
+  `calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.375)`
+  (`k = 0`) em `src/index.css`. **Ambos os termos são relativos à fonte —
+  nunca use px fixo**: o commit `14ba0e3` fixou `padding-top: 24px`, que só
+  acertava em `fs = 24` (o máximo do controle) e desalinhava em 13–23.
+- **Mirror e textarea compartilham o mesmo `padding`**: `.ghost-editor-mirror` e
+  `.ghost-editor-input` são declarados juntos em `src/index.css`. Sobrescrever o
+  padding de apenas um dos dois separa o cursor do texto visível — foi o que o
+  `padding-top: 24px` do `14ba0e3` causou (mirror em 24px, textarea em
+  `3.5*lh` = 168px). Qualquer ajuste de padding vai na regra compartilhada.
 - **Flow-layout pages and flip/tear height**: because `.page-current` grows with content, `PageSheet` captures the leaving page's height in a ref (`lastHeightRef`) while idle and applies it as `--leaving-height` / `min-height` during the animation. This prevents the leaving layer from collapsing if the incoming page is shorter (`src/components/PageSheet.tsx`).
 - **No internal editor scroll**: `.ghost-editor-input` uses `overflow: hidden` and its height is synchronized to `scrollHeight` after every value change. The scroll container is `.stage-wrap`, not the editor (`src/components/GhostEditor.tsx`).
 - **Markdown preview also flows**: `.md-preview` uses `flex: 1`, `min-height: 100%`, and the same ruled-line background so it grows with rendered Markdown inside the page (`src/index.css`).
@@ -47,7 +62,7 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 
 ## Procedure
 
-1. Load `working-in-cadernia` first.
+1. Load `working-in-ghostwriter` first.
 2. Determine whether the change affects the sheet layout (CSS), the animation (CSS keyframes), or the flip trigger flow (`Home.tsx`).
 3. If changing animation timing, update both the CSS keyframe duration and the cleanup timeout in `Home.tsx`.
 4. Verify the sheet still fills the stage and the editor remains usable on mobile and desktop.

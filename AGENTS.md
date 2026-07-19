@@ -1,4 +1,4 @@
-# AGENTS.md — cadernIA
+# AGENTS.md — GhostWriter
 
 ## Commands
 

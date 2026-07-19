@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { CheckCircle2, Ghost, KeyRound, Loader2, ShieldCheck, XCircle } from 'lucide-react'
+import { CheckCircle2, KeyRound, Loader2, ShieldCheck, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { KeyStatus } from '@/components/ApiKeyDialog'
+import { LOGO_URL } from '@/lib/brand'
 
 interface LockScreenProps {
   initialKey: string
@@ -33,10 +34,10 @@ export default function LockScreen({
         </div>
 
         <div className="mb-4 flex items-center gap-2.5">
-          <Ghost className="h-8 w-8 text-[#bd93f9]" />
+          <img src={LOGO_URL} alt="" className="h-8 w-8" />
           <div>
             <h1 className="text-xl font-bold text-[#f8f8f2]">
-              Cadern<span className="text-[#bd93f9]">IA</span>
+              Ghost<span className="text-[#bd93f9]">Writer</span>
             </h1>
             <p className="text-xs text-[#6272a4]">bloco de notas com autocomplete fantasma</p>
           </div>

@@ -55,7 +55,7 @@ The user wants to change how notes, attachments, settings, or the API key are st
 
 ## Procedure
 
-1. Load `working-in-cadernia` first.
+1. Load `working-in-ghostwriter` first.
 2. Identify whether the change touches schema, CRUD, migration, export, attachments, or settings.
 3. If changing the `Project`/`Attachment` shape, update `lib/db.ts` types, IndexedDB store handling, and all consumers.
 4. If bumping the DB version, write an `onupgradeneeded` migration; do not break existing stores.

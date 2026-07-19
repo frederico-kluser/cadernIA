@@ -1,4 +1,4 @@
-# cadernIA Skill Catalog
+# GhostWriter Skill Catalog
 
 > Source of truth: `.agents/skills/` (symlinked from `.claude/skills/`).
 > Always route through `project-router` before any implementation work.
@@ -9,7 +9,7 @@
 
 ## Knowledge
 
-- [`working-in-cadernia`](working-in-cadernia/SKILL.md) — Stack conventions: React 19, Vite, Tailwind, shadcn/ui, TypeScript strictness, ESLint, path aliases, build commands.
+- [`working-in-ghostwriter`](working-in-ghostwriter/SKILL.md) — Stack conventions: React 19, Vite, Tailwind, shadcn/ui, TypeScript strictness, ESLint, path aliases, build commands.
 
 ## Task skills
 

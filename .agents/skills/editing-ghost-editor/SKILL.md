@@ -49,7 +49,7 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
 
 ## Procedure
 
-1. Load `working-in-cadernia` first.
+1. Load `working-in-ghostwriter` first.
 2. Identify the layer being changed (editor UI, debounce logic, prompt, cache, or OpenAI client).
 3. Keep the ref/state guard pattern when touching async completion handlers.
 4. Run `yarn build` in the project root.

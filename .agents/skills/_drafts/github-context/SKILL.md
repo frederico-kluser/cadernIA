@@ -48,7 +48,7 @@ The user wants to add, change, or fix GitHub integration for selecting repositor
 
 ## Procedure
 
-1. Load `working-in-cadernia` first.
+1. Load `working-in-ghostwriter` first.
 2. Identify the changed layer: API client, dialog UI, or Home.tsx integration.
 3. Keep PAT handling local-only; do not introduce a backend proxy.
 4. Preserve the existing attachment/context contracts in `lib/db.ts` and `lib/openai.ts`.
