@@ -18,7 +18,8 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
 - `GhostEditor.tsx` is a transparent `<textarea>` with a synchronized `<div>` mirror that renders the suggestion as dimmed "ghost" text (`components/GhostEditor.tsx:14-41`).
 - `Home.tsx` owns the completion orchestration: debounce, abort, cache lookup, OpenAI call, ghost display, and an undo/redo stack for accepted suggestions / AI edits / voice insertions (`pages/Home.tsx:388-481`, `pages/Home.tsx:330-387`).
 - `lib/suggestionCache.ts` is a `localStorage` LRU keyed by a hash of 400 chars before + 60 chars after the cursor (`lib/suggestionCache.ts:7-8`).
-- `lib/openai.ts` contains `fetchCompletion`, which is **non-streaming** (`lib/openai.ts:100-124`).
+- `lib/openai.ts` contains `fetchCompletion`, which is **non-streaming** (`lib/openai.ts:163-176`). All chat calls funnel through one `chatCompletion` wrapper (`lib/openai.ts:37`).
+- `lib/openai.ts` has **two** generation paths, and they are not interchangeable: `fetchCompletion` continues the text on its own (ghost + Tab), while `fetchGuidedSuggestion` takes a user **briefing** and writes new text delivered through a preview dialog (`lib/openai.ts:223`, `components/AskSuggestionDialog.tsx`). `applyInstruction` is a third path that only rewrites text that already exists.
 
 ### Contracts and constants
 
@@ -26,9 +27,11 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
   - `MAX_BEFORE = 6000` chars before cursor.
   - `MAX_AFTER = 2000` chars after cursor.
   - `MAX_ATTACH_TOTAL = 8000` chars total for attachments.
-- Completion parameters: `temperature: 0.3`, `max_tokens: 180` (`lib/openapi.ts:112-113`).
+- Completion parameters: `temperature: 0.3`, `max_tokens: 180` (`lib/openai.ts:171-172`).
+- Guided-suggestion parameters: `temperature: 0.7` (creative composition, unlike the 0.3 of autocomplete and the 0.2 of `applyInstruction`), `MAX_BRIEFING = 2000` chars (`lib/openai.ts:20`, `lib/openai.ts:233-236`). It reuses `MAX_BEFORE`/`MAX_AFTER`/`MAX_ATTACH_TOTAL` untouched.
+- The attachment block builder is shared by both prompts (`buildAttachmentsBlock`, `lib/openai.ts:114`); the 8000-char budget is consumed **in array order**, so the first attachment can eat it all.
 - Cache: max 120 entries, values capped at 600 chars (`lib/suggestionCache.ts:7-8`).
-- Sanitization strips overlaps of **4+** chars and trims only the **end** of the suggestion, preserving leading whitespace (`lib/openai.ts:138-156`).
+- Sanitization is split in two: `normalizeModelText` (CRLF + ``` fence unwrap) is generic and shared, while `sanitizeCompletion` adds the **continuation-only** parts — stripping overlaps of **4+** chars and `trimEnd()` that preserves leading whitespace (`lib/openai.ts:141-161`). **Do not apply the overlap strip to guided suggestions**: it is a literal-continuation heuristic and would amputate the first word of a legitimately new block.
 - `fetchCompletion` asks `chatCompletion` **not** to trim the raw model output, so a leading space in the continuation is kept (`lib/openai.ts:158-170`).
 
 ### Key behaviors
@@ -46,6 +49,8 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
 - `dangerouslySetInnerHTML` renders user content + suggestion after a custom escape (`components/GhostEditor.tsx:26-32`). The escape list does not include `'`, which is usually safe but worth noting.
 - Ghost text overlaps of 1–3 chars are left in; only 4+ char overlaps are removed (`lib/openai.ts:88-94`).
 - `localStorage` full errors in the cache are silently swallowed (`lib/suggestionCache.ts:21-27`).
+- **Reasoning models need a much higher token ceiling.** For `/^o\d/` models `chatCompletion` sends `max_completion_tokens` instead of `max_tokens` (`lib/openai.ts:53`), and that budget **includes the reasoning tokens**. A ceiling sized for the visible answer alone gets consumed by reasoning and the API returns `content: ''` — a silently blank result, not an error. `fetchGuidedSuggestion` therefore scales the ceiling per family (`lib/openai.ts:236`). `applyInstruction` still has a flat 4096 for both branches plus a vestigial `const reasoning` that computes the same value twice (`lib/openai.ts:302`) — untouched so far.
+- **A programmatic `setCursor` leaves `pendingSelection` orphaned.** `GhostEditor.setCursor` writes `pendingSelection.current` (`components/GhostEditor.tsx:83@724cacf`), but the only drain is the `requestAnimationFrame` inside the textarea's `onChange` (`components/GhostEditor.tsx:158@724cacf`). So after any programmatic reposition, the *next* keystroke snaps the caret back to the stale value once. This already affects accepting a suggestion, undo and redo — treat it as pre-existing when a new feature seems to cause it. A minimal fix would drain it from a `useLayoutEffect` on `value` instead of the `onChange` rAF.
 
 ## Procedure
 
