@@ -40,15 +40,16 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 - `pageHeader` is memoized with `useMemo` and must be declared **before** `startFlip` to satisfy the React hooks immutability lint rule (`react-hooks/immutability`).
 - The leaving front face reuses `.ghost-editor-mirror` styling, so it inherits the ruled-line background. The back face uses a CSS ruled gradient.
 - **Text-to-rule alignment**: the ruled line must hit the text baseline, not the bottom of the line box. Place the rule at the top of each `line-height` period (`repeating-linear-gradient` rule from `0` to `1px`) and offset it with `background-position: 0 calc(var(--editor-lh) / 2 + var(--editor-font-size) * 0.334)`. The factor `0.334` comes from Fira Code's metrics (`unitsPerEm=2000`, `sTypoAscender=1980`, `sTypoDescender=-644`) and places the rule exactly on the baseline. Keep `--editor-lh` unrounded to avoid drift across many lines (`src/index.css`, `src/components/GhostEditor.tsx`, `src/components/PageSheet.tsx`).
-- **`padding-top` do editor deve ser `(k + 0.5) * --editor-lh`**: a baseline da
+- **`padding-top` do editor = `(k + 0.5) * lh + 0.25 * fs`**: a baseline da
   linha *n* fica em `padding-top + lh/2 + fs*0.334 + n*lh` e as réguas em
   `lh/2 + fs*0.334 + k*lh`, logo `baseline − régua(k) = padding-top − k*lh`.
-  Para o texto ficar **centralizado entre** as réguas (o visual pretendido), o
-  topo precisa ser um múltiplo semi-inteiro de `lh`. Hoje é
-  `calc(var(--editor-lh, 28px) / 2)` (`k = 0`) em `src/index.css`. **Nunca use
-  um valor fixo em px**: o commit `14ba0e3` fixou `padding-top: 24px`, que só
-  centraliza em `fs = 24` (o máximo do controle) e desalinha em toda a faixa
-  13–23.
+  O termo `(k + 0.5) * lh` centra a **baseline** entre duas réguas; como o
+  corpo das minúsculas fica acima da baseline, isso deixa o texto opticamente
+  alto, e o `+ 0.25 * fs` desce até o corpo ficar centralizado. Hoje é
+  `calc(var(--editor-lh, 28px) / 2 + var(--editor-font-size, 17px) * 0.25)`
+  (`k = 0`) em `src/index.css`. **Ambos os termos são relativos à fonte —
+  nunca use px fixo**: o commit `14ba0e3` fixou `padding-top: 24px`, que só
+  acertava em `fs = 24` (o máximo do controle) e desalinhava em 13–23.
 - **Mirror e textarea compartilham o mesmo `padding`**: `.ghost-editor-mirror` e
   `.ghost-editor-input` são declarados juntos em `src/index.css`. Sobrescrever o
   padding de apenas um dos dois separa o cursor do texto visível — foi o que o
