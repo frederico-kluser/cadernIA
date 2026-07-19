@@ -171,7 +171,7 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
                 acceptCooldownRef.current = true
                 window.setTimeout(() => {
                   acceptCooldownRef.current = false
-                }, 120)
+                }, 400)
                 onAcceptSuggestion()
               } else {
                 // Sem sugestão: Tab insere dois espaços, como num editor de código

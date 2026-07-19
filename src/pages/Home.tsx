@@ -180,6 +180,7 @@ export default function Home() {
   // ---------- refs ----------
   const textRef = useRef('')
   const cursorRef = useRef(0)
+  const isAcceptingRef = useRef(false)
   const debounceRef = useRef<number | undefined>(undefined)
   const saveTimerRef = useRef<number | undefined>(undefined)
   const abortRef = useRef<AbortController | null>(null)
@@ -511,21 +512,27 @@ export default function Home() {
   }, [requestCompletion])
 
   const acceptSuggestion = useCallback(() => {
+    if (!suggestion || isAcceptingRef.current) return
+    isAcceptingRef.current = true
     recordHistory()
-    setSuggestion((s) => {
-      if (!s) return null
-      const pos = cursorRef.current
-      const full = textRef.current
-      const next = full.slice(0, pos) + s.text + full.slice(pos)
-      textRef.current = next
-      cursorRef.current = pos + s.text.length
-      updateActive({ content: next })
-      setCursor(pos + s.text.length)
-      editorRef.current?.setCursor(pos + s.text.length)
-      return null
-    })
+    const pos = cursorRef.current
+    const full = textRef.current
+    const next = full.slice(0, pos) + suggestion.text + full.slice(pos)
+    textRef.current = next
+    cursorRef.current = pos + suggestion.text.length
+    updateActive({ content: next })
+    setCursor(pos + suggestion.text.length)
+    editorRef.current?.setCursor(pos + suggestion.text.length)
+    setSuggestion(null)
     scheduleCompletion()
-  }, [recordHistory, scheduleCompletion, updateActive])
+  }, [suggestion, recordHistory, scheduleCompletion, updateActive])
+
+  // libera a trava de aceitação quando a sugestão for efetivamente dispensada
+  useEffect(() => {
+    if (!suggestion) {
+      isAcceptingRef.current = false
+    }
+  }, [suggestion])
 
   // ---------- handlers do editor ----------
   const handleChange = useCallback(
@@ -1222,21 +1229,6 @@ export default function Home() {
         </Select>
       </footer>
 
-      {/* ================= Botão flutuante de aceitar sugestão (touch) ================= */}
-      {isTouch && mode !== 'preview' && suggestion && (
-        <button
-          onClick={() => acceptSuggestion()}
-          title="Aceitar sugestão"
-          className="fade-in-up fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#bd93f9] text-[#282a36] shadow-xl shadow-black/40 active:scale-95"
-        >
-          {loading ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
-          ) : (
-            <CornerDownLeft className="h-6 w-6" />
-          )}
-        </button>
-      )}
-
       {/* ================= Ações rápidas flutuantes no mobile (touch) ================= */}
       {isTouch && mode !== 'preview' && (
         <div className="fade-in-up fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[#44475a] bg-[#21222c]/95 px-3 py-2 shadow-xl shadow-black/40 backdrop-blur-sm">
@@ -1276,15 +1268,25 @@ export default function Home() {
           >
             <Redo2 className="h-5 w-5" />
           </button>
-          <button
-            onClick={() => {
-              openAiEdit()
-            }}
-            title="Editar com IA"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9]/15 text-[#bd93f9] transition-transform active:scale-95"
-          >
-            <Wand2 className="h-5 w-5" />
-          </button>
+          {suggestion ? (
+            <button
+              onClick={() => acceptSuggestion()}
+              title="Aceitar sugestão"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9] text-[#282a36] transition-transform active:scale-95"
+            >
+              <CornerDownLeft className="h-5 w-5" />
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                openAiEdit()
+              }}
+              title="Editar com IA"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9]/15 text-[#bd93f9] transition-transform active:scale-95"
+            >
+              <Wand2 className="h-5 w-5" />
+            </button>
+          )}
         </div>
       )}
 
