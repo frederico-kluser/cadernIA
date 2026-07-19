@@ -810,9 +810,17 @@ body,
     padding-left: 18px;
     /* folga para a barra flutuante de ações não cobrir o fim do texto */
     padding-bottom: 120px;
+    /* no iOS, inputs com font-size < 16px disparam zoom automático no foco;
+       manter o mirror com o mesmo tamanho preserva o alinhamento do cursor */
+    font-size: max(var(--editor-font-size, 17px), 16px);
+    line-height: calc(max(var(--editor-font-size, 17px), 16px) * 2);
   }
   .md-preview {
     padding-left: 18px;
     padding-bottom: 120px;
+  }
+  .page-name,
+  .page-name-static {
+    font-size: 16px;
   }
 }
