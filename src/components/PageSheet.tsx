@@ -37,7 +37,7 @@ export default function PageSheet({
     </div>
   )
 
-  const lh = Math.round(fontSize * 1.65)
+  const lh = fontSize * 1.65
   const vars = {
     ['--editor-font-size' as string]: `${fontSize}px`,
     ['--editor-lh' as string]: `${lh}px`,

@@ -35,6 +35,7 @@ The user wants to change the notebook page visual, the full-page sheet layout, t
 
 - `pageHeader` is memoized with `useMemo` and must be declared **before** `startFlip` to satisfy the React hooks immutability lint rule (`react-hooks/immutability`).
 - The leaving front face reuses `.ghost-editor-mirror` styling, so it inherits the ruled-line background. The back face uses a CSS ruled gradient.
+- **Text-to-rule alignment**: the ruled line must hit the text baseline, not the bottom of the line box. Place the rule at the top of each `line-height` period (`repeating-linear-gradient` rule from `0` to `1px`) and offset it with `background-position: 0 calc(var(--editor-font-size) * 1.125)`. Keep `--editor-lh` unrounded to avoid drift across many lines (`index.css:351`, `GhostEditor.tsx:123`, `PageSheet.tsx:41`).
 - `crypto.randomUUID()` is used for project/attachment IDs and requires secure context.
 
 ## Procedure

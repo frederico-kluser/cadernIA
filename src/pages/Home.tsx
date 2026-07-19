@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Sparkles,
   Trash2,
+  Wand2,
 } from 'lucide-react'
 import GhostEditor, {
   staticMirrorHtml,
@@ -36,6 +37,8 @@ import LockScreen from '@/components/LockScreen'
 import PageSheet, { type LeavingPage } from '@/components/PageSheet'
 import AttachmentsPanel from '@/components/AttachmentsPanel'
 import GitHubContextDialog from '@/components/GitHubContextDialog'
+import AiEditDialog from '@/components/AiEditDialog'
+import TutorialDialog from '@/components/TutorialDialog'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -67,7 +70,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { fetchCompletion, transcribeAudio, validateApiKey } from '@/lib/openai'
+import {
+  applyInstruction,
+  classifyUtterance,
+  fetchCompletion,
+  transcribeAudio,
+  validateApiKey,
+} from '@/lib/openai'
 import { getCached, invalidate, setCached } from '@/lib/suggestionCache'
 import {
   dbDelete,
@@ -93,9 +102,18 @@ const LS = {
   model: 'noteghost_model',
   fontSize: 'noteghost_font_size',
   githubPat: 'noteghost_github_pat',
+  tutorial: 'noteghost_tutorial_seen',
 }
 
-const MODELS = ['gpt-4o-mini', 'gpt-4.1-nano', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4.1']
+const MODEL_OPTIONS = [
+  { id: 'gpt-5.4-nano', label: 'GPT-5.4 nano' },
+  { id: 'gpt-5.4-mini', label: 'GPT-5.4 mini' },
+  { id: 'gpt-5.4', label: 'GPT-5.4' },
+  { id: 'gpt-5.5', label: 'GPT-5.5' },
+  { id: 'o4-mini', label: 'o4-mini' },
+  { id: 'o3', label: 'o3' },
+]
+const DEFAULT_MODEL = MODEL_OPTIONS[1].id
 const AUTOCOMPLETE_DELAY_MS = 800
 
 export default function Home() {
@@ -120,7 +138,7 @@ export default function Home() {
   const [keyError, setKeyError] = useState<string | undefined>()
   const [keyDialogOpen, setKeyDialogOpen] = useState(false)
   const [storedChecked, setStoredChecked] = useState(false)
-  const [model, setModel] = useState(() => localStorage.getItem(LS.model) ?? MODELS[0])
+  const [model, setModel] = useState(() => localStorage.getItem(LS.model) ?? DEFAULT_MODEL)
 
   // ---------- extras ----------
   const [recState, setRecState] = useState<RecState>('idle')
@@ -131,6 +149,21 @@ export default function Home() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [githubDialogOpen, setGithubDialogOpen] = useState(false)
   const [githubPat, setGithubPat] = useState(() => localStorage.getItem(LS.githubPat) ?? '')
+
+  // ---------- tutorial ----------
+  const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [tutorialSeen, setTutorialSeen] = useState(
+    () => localStorage.getItem(LS.tutorial) === '1',
+  )
+
+  // ---------- editar com IA ----------
+  const [aiEditOpen, setAiEditOpen] = useState(false)
+  const [aiEditPreview, setAiEditPreview] = useState<string | null>(null)
+  const [aiEditLoading, setAiEditLoading] = useState(false)
+  const [aiEditSelection, setAiEditSelection] = useState<{
+    start: number
+    end: number
+  } | null>(null)
 
   // ---------- refs ----------
   const textRef = useRef('')
@@ -220,6 +253,26 @@ export default function Home() {
     localStorage.setItem(LS.githubPat, githubPat)
   }, [githubPat])
 
+  useEffect(() => {
+    localStorage.setItem(LS.tutorial, tutorialSeen ? '1' : '0')
+  }, [tutorialSeen])
+
+  // ---------- tutorial ----------
+  useEffect(() => {
+    if (dbReady && unlocked && !tutorialSeen) {
+      setTutorialOpen(true)
+    }
+  }, [dbReady, unlocked, tutorialSeen])
+
+  const markTutorialSeen = useCallback(() => {
+    setTutorialSeen(true)
+    setTutorialOpen(false)
+  }, [])
+
+  const reopenTutorial = useCallback(() => {
+    setTutorialOpen(true)
+  }, [])
+
   // ---------- validação da chave ----------
   const runValidation = useCallback(async (key: string) => {
     setKeyStatus('checking')
@@ -270,6 +323,66 @@ export default function Home() {
     setCursor(0)
     cursorRef.current = 0
   }, [])
+
+  // ---------- editar com IA ----------
+  const openAiEdit = useCallback(() => {
+    const sel = editorRef.current?.getSelection() ?? { start: 0, end: 0 }
+    setAiEditSelection(sel.start === sel.end ? null : sel)
+    setAiEditPreview(null)
+    setAiEditOpen(true)
+  }, [])
+
+  const handleAiEditGenerate = useCallback(
+    async (instruction: string, onlySelection: boolean) => {
+      if (!apiKey || !unlocked) return
+      setAiEditLoading(true)
+      setAiEditPreview(null)
+      try {
+        const full = textRef.current
+        const selected =
+          aiEditSelection && onlySelection
+            ? full.slice(aiEditSelection.start, aiEditSelection.end)
+            : undefined
+        const result = await applyInstruction({
+          apiKey,
+          model,
+          instruction,
+          fullText: full,
+          selectedText: selected,
+        })
+        setAiEditPreview(result)
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Falha ao gerar edição.')
+      } finally {
+        setAiEditLoading(false)
+      }
+    },
+    [apiKey, unlocked, model, aiEditSelection],
+  )
+
+  const handleAiEditApply = useCallback(() => {
+    if (!aiEditPreview) return
+    if (!aiEditSelection) {
+      const next = aiEditPreview
+      textRef.current = next
+      updateActive({ content: next })
+      setCursor(next.length)
+      editorRef.current?.setCursor(next.length)
+    } else {
+      const full = textRef.current
+      const before = full.slice(0, aiEditSelection.start)
+      const after = full.slice(aiEditSelection.end)
+      const next = before + aiEditPreview + after
+      const pos = aiEditSelection.start + aiEditPreview.length
+      textRef.current = next
+      updateActive({ content: next })
+      setCursor(pos)
+      editorRef.current?.setCursor(pos)
+    }
+    setAiEditOpen(false)
+    setAiEditPreview(null)
+    toast.success('Edição aplicada.')
+  }, [aiEditPreview, aiEditSelection, updateActive])
 
   // ---------- autocomplete ----------
   const requestCompletion = useCallback(
@@ -495,11 +608,33 @@ export default function Home() {
         setRecState('transcribing')
         try {
           const transcript = await transcribeAudio(apiKey, blob)
-          if (transcript) {
-            editorRef.current?.insertAtCursor(transcript)
+          if (!transcript) {
+            toast('Não consegui entender o áudio.')
+            setRecState('idle')
+            return
+          }
+          const classified = await classifyUtterance(
+            apiKey,
+            model,
+            transcript,
+            textRef.current,
+          )
+          if (classified.type === 'transcription') {
+            editorRef.current?.insertAtCursor(classified.payload)
             toast.success('Transcrição inserida no cursor.')
           } else {
-            toast('Não consegui entender o áudio.')
+            toast.info('Comando de edição detectado.')
+            const edited = await applyInstruction({
+              apiKey,
+              model,
+              instruction: classified.payload,
+              fullText: textRef.current,
+            })
+            textRef.current = edited
+            updateActive({ content: edited })
+            setCursor(edited.length)
+            editorRef.current?.setCursor(edited.length)
+            toast.success('Edição aplicada pelo comando de voz.')
           }
         } catch (e) {
           toast.error(e instanceof Error ? e.message : 'Falha na transcrição.')
@@ -514,7 +649,7 @@ export default function Home() {
     } catch {
       toast.error('Não foi possível acessar o microfone. Verifique a permissão.')
     }
-  }, [apiKey])
+  }, [apiKey, model, updateActive])
 
   // ---------- anexos (por página) ----------
   const handleFiles = useCallback(
@@ -769,6 +904,17 @@ export default function Home() {
             )}
           </Button>
 
+          {/* editar com IA */}
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Editar com IA"
+            onClick={openAiEdit}
+            className="h-9 w-9 flex-none text-[#bd93f9] hover:bg-[#44475a] hover:text-[#bd93f9]"
+          >
+            <Wand2 className="h-5 w-5" />
+          </Button>
+
           {/* anexos — custom select */}
           <Popover open={attachOpen} onOpenChange={setAttachOpen}>
             <PopoverTrigger asChild>
@@ -991,40 +1137,71 @@ export default function Home() {
         </div>
 
         <Select value={model} onValueChange={setModel}>
-          <SelectTrigger className="hidden h-7 w-36 border-[#44475a] bg-[#282a36] text-xs text-[#8be9fd] sm:flex">
+          <SelectTrigger className="hidden h-7 w-40 border-[#44475a] bg-[#282a36] text-xs text-[#8be9fd] sm:flex">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="border-[#44475a] bg-[#282a36] text-[#f8f8f2]">
-            {MODELS.map((m) => (
+            {MODEL_OPTIONS.map((m) => (
               <SelectItem
-                key={m}
-                value={m}
+                key={m.id}
+                value={m.id}
                 className="text-xs focus:bg-[#44475a] focus:text-[#f8f8f2]"
               >
-                {m}
+                {m.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </footer>
 
-      {/* ================= Botão flutuante (touch) ================= */}
-      {isTouch && mode !== 'preview' && (
+      {/* ================= Botão flutuante de aceitar sugestão (touch) ================= */}
+      {isTouch && mode !== 'preview' && suggestion && (
         <button
-          onClick={() =>
-            suggestion ? acceptSuggestion() : void requestCompletion(false)
-          }
-          title={suggestion ? 'Aceitar sugestão' : 'Gerar autocomplete'}
-          className="fade-in-up fixed bottom-16 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#bd93f9] text-[#282a36] shadow-xl shadow-black/40 active:scale-95"
+          onClick={() => acceptSuggestion()}
+          title="Aceitar sugestão"
+          className="fade-in-up fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#bd93f9] text-[#282a36] shadow-xl shadow-black/40 active:scale-95"
         >
           {loading ? (
             <Loader2 className="h-6 w-6 animate-spin" />
-          ) : suggestion ? (
-            <CornerDownLeft className="h-6 w-6" />
           ) : (
-            <Sparkles className="h-6 w-6" />
+            <CornerDownLeft className="h-6 w-6" />
           )}
         </button>
+      )}
+
+      {/* ================= Ações rápidas flutuantes no mobile (touch) ================= */}
+      {isTouch && mode !== 'preview' && (
+        <div className="fade-in-up fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[#44475a] bg-[#21222c]/95 px-3 py-2 shadow-xl shadow-black/40 backdrop-blur-sm">
+          <button
+            onClick={() =>
+              recState === 'recording' ? stopRecording() : void startRecording()
+            }
+            title={recState === 'recording' ? 'Parar gravação' : 'Ditar com Whisper'}
+            disabled={recState === 'transcribing'}
+            className={`flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95 disabled:opacity-50 ${
+              recState === 'recording'
+                ? 'rec-pulse bg-[#ff5555]/20 text-[#ff5555]'
+                : 'bg-[#50fa7b]/15 text-[#50fa7b]'
+            }`}
+          >
+            {recState === 'transcribing' ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : recState === 'recording' ? (
+              <MicOff className="h-5 w-5" />
+            ) : (
+              <Mic className="h-5 w-5" />
+            )}
+          </button>
+          <button
+            onClick={() => {
+              openAiEdit()
+            }}
+            title="Editar com IA"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9]/15 text-[#bd93f9] transition-transform active:scale-95"
+          >
+            <Wand2 className="h-5 w-5" />
+          </button>
+        </div>
       )}
 
       {/* ================= Menu lateral (mobile) ================= */}
@@ -1149,6 +1326,16 @@ export default function Home() {
                 )}
                 Ditar
               </button>
+              <button
+                className="drawer-btn"
+                onClick={() => {
+                  openAiEdit()
+                  setDrawerOpen(false)
+                }}
+              >
+                <Wand2 className="h-5 w-5 text-[#bd93f9]" />
+                IA edit
+              </button>
               <button className="drawer-btn" onClick={() => setFontSize((s) => Math.max(13, s - 1))}>
                 <span className="text-base font-bold text-[#f1fa8c]">A−</span>
                 Fonte
@@ -1164,13 +1351,13 @@ export default function Home() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-[#44475a] bg-[#282a36] text-[#f8f8f2]">
-                  {MODELS.map((m) => (
+                  {MODEL_OPTIONS.map((m) => (
                     <SelectItem
-                      key={m}
-                      value={m}
+                      key={m.id}
+                      value={m.id}
                       className="text-xs focus:bg-[#44475a] focus:text-[#f8f8f2]"
                     >
-                      {m}
+                      {m.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1255,6 +1442,23 @@ export default function Home() {
               </button>
             </div>
           </div>
+
+          {/* ajuda */}
+          <div className="drawer-section">
+            <div className="drawer-section-title">Ajuda</div>
+            <div className="drawer-grid">
+              <button
+                className="drawer-btn"
+                onClick={() => {
+                  reopenTutorial()
+                  setDrawerOpen(false)
+                }}
+              >
+                <HelpCircle className="h-5 w-5 text-[#8be9fd]" />
+                Tutorial
+              </button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -1326,6 +1530,22 @@ export default function Home() {
           onSubmit={handleLockSubmit}
         />
       )}
+
+      <TutorialDialog
+        open={tutorialOpen}
+        onOpenChange={setTutorialOpen}
+        onFinish={markTutorialSeen}
+      />
+
+      <AiEditDialog
+        open={aiEditOpen}
+        onOpenChange={setAiEditOpen}
+        hasSelection={Boolean(aiEditSelection)}
+        preview={aiEditPreview}
+        loading={aiEditLoading}
+        onGenerate={handleAiEditGenerate}
+        onApply={handleAiEditApply}
+      />
 
       <Toaster
         theme="dark"
