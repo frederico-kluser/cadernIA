@@ -32,8 +32,7 @@ import GhostEditor, {
 import MarkdownPreview from '@/components/MarkdownPreview'
 import ApiKeyDialog, { type KeyStatus } from '@/components/ApiKeyDialog'
 import LockScreen from '@/components/LockScreen'
-import NotepadScene, { type AnimPageInfo } from '@/components/NotepadScene'
-import PageTexture, { type PageTextureHandle } from '@/components/PageTexture'
+import PageSheet, { type LeavingPage } from '@/components/PageSheet'
 import AttachmentsPanel from '@/components/AttachmentsPanel'
 import { Button } from '@/components/ui/button'
 import {
@@ -101,13 +100,7 @@ export default function Home() {
   const [projects, setProjects] = useState<Project[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [dbReady, setDbReady] = useState(false)
-  const [anim, setAnim] = useState<(AnimPageInfo & { seq: number }) | null>(null)
-  const [pageRect, setPageRect] = useState<{
-    left: number
-    top: number
-    width: number
-    height: number
-  } | null>(null)
+  const [leaving, setLeaving] = useState<LeavingPage | null>(null)
 
   // ---------- editor ----------
   const [cursor, setCursor] = useState(0)
@@ -144,8 +137,6 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
-  const stageRef = useRef<PageTextureHandle>(null)
-  const animSeqRef = useRef(0)
 
   const isTouch = useMemo(
     () =>
@@ -163,7 +154,7 @@ export default function Home() {
     [projects, activeId],
   )
   const unlocked = keyStatus === 'valid'
-  const busy = anim !== null
+  const busy = leaving !== null
 
   // sincroniza o ref de texto ao trocar de página
   useEffect(() => {
@@ -378,25 +369,55 @@ export default function Home() {
     }
   }, [])
 
-  // ---------- navegação de páginas (flip 3D) ----------
+  // ---------- cabeçalho da folha ----------
+  const pageHeader = useMemo(() => {
+    if (!active) return null
+    const createdDate = new Date(active.createdAt)
+    return (
+      <>
+        <input
+          className="page-name"
+          value={active.name}
+          onChange={(e) => updateActive({ name: e.target.value })}
+          aria-label="Nome da página"
+          spellCheck={false}
+        />
+        <span className="page-meta">
+          <span className="date-label">Data:</span>
+          <span className="date-blank">{String(createdDate.getDate()).padStart(2, '0')}</span>
+          <span className="date-sep">/</span>
+          <span className="date-blank">
+            {String(createdDate.getMonth() + 1).padStart(2, '0')}
+          </span>
+          <span className="date-sep">/</span>
+          <span className="date-blank date-year">{createdDate.getFullYear()}</span>
+          <span className="page-count">
+            {' '}
+            · {activeIndex + 1}/{projects.length}
+          </span>
+        </span>
+      </>
+    )
+  }, [active, activeIndex, projects.length, updateActive])
+
+  // ---------- navegação de páginas (flip CSS) ----------
   const startFlip = useCallback(
-    async (targetId: string, kind: 'flip' | 'tear' = 'flip') => {
+    (targetId: string, kind: 'flip' | 'tear' = 'flip') => {
       if (!active) return
-      // muda o conteúdo do palco para espelho e fotografa a página
-      let tex = ''
-      try {
-        tex = (await stageRef.current?.snapshot()) ?? ''
-      } catch {
-        /* sem textura — anima em branco */
-      }
-      animSeqRef.current += 1
-      setAnim({ kind, tex, seq: animSeqRef.current })
+      const direction =
+        projects.findIndex((p) => p.id === targetId) > activeIndex ? 'next' : 'prev'
+      setLeaving({
+        kind,
+        direction,
+        header: pageHeader,
+        bodyHtml: staticMirrorHtml(active.content),
+      })
       resetEditorState()
       setActiveId(targetId)
-      // a animação dura ~1.1s; libera o estado depois
-      window.setTimeout(() => setAnim(null), 1200)
+      // libera o estado após a animação CSS
+      window.setTimeout(() => setLeaving(null), kind === 'tear' ? 700 : 900)
     },
-    [active, resetEditorState],
+    [active, activeIndex, pageHeader, projects, resetEditorState],
   )
 
   const goTo = useCallback(
@@ -577,34 +598,6 @@ export default function Home() {
         ? 'bg-[#bd93f9] text-[#282a36]'
         : 'text-[#6272a4] hover:bg-[#44475a] hover:text-[#f8f8f2]'
     }`
-
-  const createdDate = active ? new Date(active.createdAt) : null
-
-  const pageHeader = active && createdDate && (
-    <>
-      <input
-        className="page-name"
-        value={active.name}
-        onChange={(e) => updateActive({ name: e.target.value })}
-        aria-label="Nome da página"
-        spellCheck={false}
-      />
-      <span className="page-meta">
-        <span className="date-label">Data:</span>
-        <span className="date-blank">{String(createdDate.getDate()).padStart(2, '0')}</span>
-        <span className="date-sep">/</span>
-        <span className="date-blank">
-          {String(createdDate.getMonth() + 1).padStart(2, '0')}
-        </span>
-        <span className="date-sep">/</span>
-        <span className="date-blank date-year">{createdDate.getFullYear()}</span>
-        <span className="page-count">
-          {' '}
-          · {activeIndex + 1}/{projects.length}
-        </span>
-      </span>
-    </>
-  )
 
   const attachCount = active?.attachments.length ?? 0
 
@@ -846,103 +839,60 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ================= Palco 3D + folha interativa ================= */}
+      {/* ================= Folha full-page com flip CSS ================= */}
       <div className="stage-wrap">
-        <NotepadScene anim={anim} onLayout={setPageRect} />
-
-        {/* folha interativa projetada sobre o caderno 3D */}
-        {dbReady && active && pageRect && (
-          <div
-            className="sheet-overlay"
-            style={{
-              left: pageRect.left,
-              top: pageRect.top,
-              width: pageRect.width,
-              height: pageRect.height,
-              ['--editor-lh' as string]: `${Math.round(fontSize * 1.65)}px`,
-            }}
+        {dbReady && active && (
+          <PageSheet
+            header={pageHeader}
+            fontSize={fontSize}
+            leaving={leaving}
+            onLeavingEnd={() => setLeaving(null)}
           >
-            <div className="sheet-holes" aria-hidden>
-              {Array.from({ length: 13 }).map((_, i) => (
-                <span key={i} className="sheet-hole" />
-              ))}
-            </div>
-            <div className="sheet-header">{pageHeader}</div>
-            <div className="sheet-body">
-              {mode === 'edit' && (
-                <GhostEditor
-                  key={active.id}
-                  ref={editorRef}
-                  value={content}
-                  cursor={cursor}
-                  onChange={handleChange}
-                  onCursorChange={handleCursorChange}
-                  suggestion={suggestion?.text ?? null}
-                  onAcceptSuggestion={acceptSuggestion}
-                  onDismissSuggestion={() => setSuggestion(null)}
-                  onManualTrigger={() => void requestCompletion(false)}
-                  fontSize={fontSize}
-                />
-              )}
-              {mode === 'preview' && <MarkdownPreview source={content} />}
-              {mode === 'split' && (
-                <div className="grid h-full grid-cols-2">
-                  <div className="relative min-w-0 border-r border-[#44475a]">
-                    <GhostEditor
-                      key={active.id}
-                      ref={editorRef}
-                      value={content}
-                      cursor={cursor}
-                      onChange={handleChange}
-                      onCursorChange={handleCursorChange}
-                      suggestion={suggestion?.text ?? null}
-                      onAcceptSuggestion={acceptSuggestion}
-                      onDismissSuggestion={() => setSuggestion(null)}
-                      onManualTrigger={() => void requestCompletion(false)}
-                      fontSize={fontSize}
-                    />
-                  </div>
-                  <div className="relative min-w-0">
-                    <MarkdownPreview source={content} />
-                  </div>
+            {mode === 'edit' && (
+              <GhostEditor
+                key={active.id}
+                ref={editorRef}
+                value={content}
+                cursor={cursor}
+                onChange={handleChange}
+                onCursorChange={handleCursorChange}
+                suggestion={suggestion?.text ?? null}
+                onAcceptSuggestion={acceptSuggestion}
+                onDismissSuggestion={() => setSuggestion(null)}
+                onManualTrigger={() => void requestCompletion(false)}
+                fontSize={fontSize}
+              />
+            )}
+            {mode === 'preview' && <MarkdownPreview source={content} />}
+            {mode === 'split' && (
+              <div className="grid h-full grid-cols-2">
+                <div className="relative min-w-0 border-r border-[#44475a]">
+                  <GhostEditor
+                    key={active.id}
+                    ref={editorRef}
+                    value={content}
+                    cursor={cursor}
+                    onChange={handleChange}
+                    onCursorChange={handleCursorChange}
+                    suggestion={suggestion?.text ?? null}
+                    onAcceptSuggestion={acceptSuggestion}
+                    onDismissSuggestion={() => setSuggestion(null)}
+                    onManualTrigger={() => void requestCompletion(false)}
+                    fontSize={fontSize}
+                  />
                 </div>
-              )}
-            </div>
-          </div>
+                <div className="relative min-w-0">
+                  <MarkdownPreview source={content} />
+                </div>
+              </div>
+            )}
+          </PageSheet>
         )}
 
         {!dbReady && (
           <div className="absolute inset-0 z-20 flex items-center justify-center text-[#6272a4]">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Abrindo o bloco…
           </div>
-        )}
-
-        {/* palco off-screen: fotografado para virar textura da página 3D */}
-        {active && pageRect && (
-          <PageTexture
-            ref={stageRef}
-            width={Math.max(2, Math.round(pageRect.width * 1.5))}
-            height={Math.max(2, Math.round(pageRect.height * 1.5))}
-            variant="mirror"
-          >
-            <div
-              className="ghost-editor-wrap"
-              style={{
-                ['--editor-font-size' as string]: `${fontSize * 1.5}px`,
-                ['--editor-lh' as string]: `${Math.round(fontSize * 1.65 * 1.5)}px`,
-              }}
-            >
-              <div
-                className="ghost-editor-mirror"
-                style={{
-                  backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${Math.round(fontSize * 1.65 * 1.5) - 1}px, var(--rule-line) ${Math.round(fontSize * 1.65 * 1.5) - 1}px, var(--rule-line) ${Math.round(fontSize * 1.65 * 1.5)}px)`,
-                }}
-                dangerouslySetInnerHTML={{
-                  __html: staticMirrorHtml(content),
-                }}
-              />
-            </div>
-          </PageTexture>
         )}
       </div>
 

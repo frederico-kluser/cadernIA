@@ -1,56 +1,56 @@
 ---
 name: editing-notepad-3d
-description: Guides changes to the Three.js notepad scene, page texture rendering, and flip/tear animations. Use whenever the user touches NotepadScene.tsx, PageTexture.tsx, Notepad.tsx, or the editor overlay positioning.
+description: Guides changes to the CSS-only notebook page, full-page sheet layout, and page-flip/tear animations. Use whenever the user touches PageSheet.tsx, the page CSS in index.css, or the sheet animation flow in Home.tsx.
 metadata:
   type: task
-  verification_signal: yarn build in project root + notepad-3d eval suite
+  verification_signal: yarn build in project root
 ---
 # editing-notepad-3d
 
 ## When to use
 
-The user wants to change the 3D notebook visual, page-flip animation, page texture rasterization, or the DOM overlay that sits on top of the WebGL canvas.
+The user wants to change the notebook page visual, the full-page sheet layout, the page-flip/tear animation, or how the editor is layered inside the sheet.
 
 ## Injected knowledge
 
 ### Architecture
 
-- `NotepadScene.tsx` builds the Three.js scene (desk, cover, paper stack, helical rings) and runs `flip`/`tear` animations (`components/NotepadScene.tsx`).
-- `PageTexture.tsx` renders an off-screen DOM clone via SVG `foreignObject` → canvas PNG so the animated page shows the real note content as texture (`components/PageTexture.tsx`).
-- `Notepad.tsx` is a CSS-only flip/tear implementation that appears **unused** in `Home.tsx`; `Home` uses the WebGL pipeline instead.
-- The interactive editor is a DOM overlay absolutely positioned on top of the WebGL canvas. `NotepadScene.tsx:349-371` projects the 3D page corners to screen coordinates and notifies `Home` via `onLayout`, which positions the overlay at `pages/Home.tsx:854-862`.
+- `PageSheet.tsx` is the single source of truth for the page UI. It renders the current page and, during navigation, an animated leaving page on top of it (`components/PageSheet.tsx`).
+- The page is CSS-only: no WebGL, no Three.js, no off-screen texture rasterization. The old `NotepadScene.tsx`, `PageTexture.tsx`, and `Notepad.tsx` components were removed.
+- The sheet fills `stage-wrap` via `.page-perspective` / `.page-stack` (`src/index.css`). The editor is layered directly inside `.page-current`, not projected on top of a 3D canvas.
+- `Home.tsx` builds the page header as a memoized React node and passes it to `PageSheet` along with the current note content. On navigation it captures the old header and a static HTML mirror of the old content and hands them to `PageSheet` as the `leaving` animation payload (`pages/Home.tsx`).
 
 ### Key flow
 
-- `Home.startFlip` snapshots the current page texture, increments an animation sequence, sets the new `activeId`, and clears editor state (`pages/Home.tsx`).
-- The actual 3D animation is triggered by the `anim` prop change in `NotepadScene.tsx:452`.
-- `PageTexture` rasterization can fail for cross-origin fonts/CSS; it serializes CSS rules and falls back to `@import` (`components/PageTexture.tsx:31-37`).
+- `Home.startFlip` captures the current page header (`pageHeader`) and a static HTML mirror (`staticMirrorHtml(active.content)`), sets the new `activeId`, and stores the leaving info in `leaving` state (`pages/Home.tsx`).
+- `PageSheet` renders `.page-leaving` with two faces: `.page-leave-front` (old content) and `.page-leave-back` (ruled blank page). CSS 3D transforms animate the flip (`components/PageSheet.tsx`).
+- The leaving layer fires `onAnimationEnd` to clear state, but `Home.tsx` also clears it via `setTimeout` as a fallback.
 
 ### Timing constants
 
-- `Home.tsx:397` hard-codes a 1200 ms cleanup timeout.
-- `NotepadScene.tsx:460` uses 1.05 s for flip and 1.1 s for tear.
-- These durations can drift; keep them in sync when changing animation timing.
+- `src/index.css`: `flip-next` and `flip-prev` animations run for **0.85 s**; `tear-out` runs for **0.7 s**.
+- `pages/Home.tsx`: cleanup timeout is **900 ms** for flip and **700 ms** for tear. Keep these in sync with the CSS durations.
 
 ### Gotchas
 
-- `Notepad.tsx` is likely dead code; prefer `NotepadScene` + `PageTexture` for changes that affect the live UI.
-- The overlay must be repositioned whenever the 3D page moves. Changes to camera, paper dimensions, or page transform require checking `onLayout` coordinates.
+- `pageHeader` is memoized with `useMemo` and must be declared **before** `startFlip` to satisfy the React hooks immutability lint rule (`react-hooks/immutability`).
+- The leaving front face reuses `.ghost-editor-mirror` styling, so it inherits the ruled-line background. The back face uses a CSS ruled gradient.
 - `crypto.randomUUID()` is used for project/attachment IDs and requires secure context.
 
 ## Procedure
 
 1. Load `working-in-cadernia` first.
-2. Determine whether the change affects the scene, the texture, the animation, or the overlay.
-3. If changing animation timing, update all three locations (CSS/timeout, `NotepadScene` durations, and the cleanup timeout).
-4. Verify the overlay still aligns after page flip by checking `onLayout` values.
+2. Determine whether the change affects the sheet layout (CSS), the animation (CSS keyframes), or the flip trigger flow (`Home.tsx`).
+3. If changing animation timing, update both the CSS keyframe duration and the cleanup timeout in `Home.tsx`.
+4. Verify the sheet still fills the stage and the editor remains usable on mobile and desktop.
 5. Run `yarn build` in the project root.
-6. Run the notepad-3d eval suite (`scripts/eval-notepad-3d.sh`).
 
 ## References
 
-- `references/notepad-3d-pipeline.md` — scene graph, texture rasterization, overlay coordinate flow.
+- `src/components/PageSheet.tsx` — page component and leaving-page animation layer.
+- `src/index.css` — `.page-perspective`, `.page-stack`, `.page-current`, `.page-leaving`, and keyframe animations.
+- `src/pages/Home.tsx` — `startFlip`, `pageHeader` memoization, and `PageSheet` usage.
 
 ## <evolution>
 
-On task completion, run the <memory_pipeline>: if there is IMPORTANT and VERIFIED information to retain, update THIS SKILL.md DIRECTLY. Do NOT create learnings files. Do NOT self-merge anything that has not passed `yarn build` in the project root and the notepad-3d eval suite.
+On task completion, run the <memory_pipeline>: if there is IMPORTANT and VERIFIED information to retain, update THIS SKILL.md DIRECTLY. Do NOT create learnings files. Do NOT self-merge anything that has not passed `yarn build` in the project root.
