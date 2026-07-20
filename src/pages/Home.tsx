@@ -1288,7 +1288,7 @@ export default function Home() {
 
         <div className="flex flex-none items-center gap-2 pr-1">
           <img src={LOGO_URL} alt="" className="h-5 w-5" />
-          <span className="hidden text-sm font-bold sm:inline">
+          <span className="inline text-sm font-bold">
             Ghost<span className="text-[#bd93f9]">Writer</span>
           </span>
         </div>
