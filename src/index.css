@@ -356,7 +356,7 @@ body,
 
 .ghost-editor-mirror,
 .ghost-editor-input {
-  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--editor-font-family, 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: var(--editor-font-size, 17px);
   line-height: var(--editor-lh, 28px);
   font-variant-ligatures: none;
@@ -801,6 +801,64 @@ body,
 }
 .fade-in-up { animation: fade-in-up 0.18s ease-out; }
 
+/* ============ Dock ============ */
+.dock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 4px 12px;
+  border-top: 1px solid #44475a;
+  background: rgba(33, 34, 44, 0.92);
+  backdrop-filter: blur(6px);
+}
+.dock-sep {
+  width: 1px;
+  height: 20px;
+  background: #44475a;
+  margin: 0 4px;
+  flex: none;
+}
+.dock-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #6272a4;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.dock-btn:not(:disabled):hover {
+  background: #44475a;
+  color: #f8f8f2;
+}
+.dock-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.dock-size {
+  width: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: #f8f8f2;
+}
+.dock-btn-accept:not(:disabled) {
+  color: #50fa7b;
+}
+.dock-btn-accept:not(:disabled):hover {
+  background: rgba(80, 250, 123, 0.15);
+  color: #50fa7b;
+}
+.dock-btn-dismiss:not(:disabled) {
+  color: #ff5555;
+}
+.dock-btn-dismiss:not(:disabled):hover {
+  background: rgba(255, 85, 85, 0.15);
+  color: #ff5555;
+}
+
 /* ============ Responsivo ============ */
 @media (max-width: 640px) {
   .sheet-header {
@@ -823,6 +881,7 @@ body,
   }
   .ghost-editor-mirror,
   .ghost-editor-input {
+    font-family: var(--editor-font-family, 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace);
     padding-left: 18px;
     /* folga para a barra flutuante de ações não cobrir o fim do texto */
     padding-bottom: 120px;
