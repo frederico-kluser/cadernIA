@@ -38,7 +38,7 @@ The user wants to change how the AI inline suggestion works: prompt engineering,
 
 - `Tab` accepts the suggestion once per keypress (repeat events and a 400 ms cooldown prevent double acceptance); `Esc` dismisses; `Ctrl/Cmd+Space|Enter` triggers manually; otherwise two-space tab insertion (`components/GhostEditor.tsx:164-191`).
 - The acceptance handler in `Home.tsx` is guarded by `isAcceptingRef` to prevent concurrent calls from inserting the suggestion more than once before `setSuggestion(null)` propagates (`pages/Home.tsx:514-539@fc63c8f`).
-- On touch devices the floating bottom dock swaps the "Editar com IA" button for an "Aceitar sugestão" button whenever a suggestion is visible (`pages/Home.tsx:1247-1296@fc63c8f`).
+- **A dock inferior (`components/Dock.tsx`) é a barra dedicada da sugestão** — Aceitar, Dispensar e um rótulo de estado, nada mais. Os controles de fonte que moravam nela foram para o menu (drawer no mobile, submenu "Fonte" no menu "Mais" do desktop). No mobile o rótulo some e os dois botões dividem a largura (`index.css`, bloco `@media (max-width: 640px)`): no toque não existe `Tab`, então a dock é o **único** caminho para aceitar — qualquer mudança que a esconda ou encolha quebra o fluxo em mobile.
 - `Ctrl/Cmd+Z` undoes the last accepted suggestion (and other recorded edits), `Ctrl/Cmd+Shift+Z` / `Ctrl/Cmd+Y` redoes; mobile shows undo/redo icons (`pages/Home.tsx:330-387`, `components/GhostEditor.tsx:164-191`).
 - Every new completion aborts the previous `AbortController` (`pages/Home.tsx:296-298`).
 - After the API returns, a guard compares `cursorRef.current === pos && textRef.current === full` to avoid stale suggestions (`pages/Home.tsx:317`).

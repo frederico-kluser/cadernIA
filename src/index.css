@@ -805,26 +805,31 @@ body,
 .dock {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex: none;
-  padding: 4px 12px;
+  padding: 6px 12px;
   border-top: 1px solid #44475a;
   background: rgba(33, 34, 44, 0.92);
   backdrop-filter: blur(6px);
 }
-.dock-sep {
-  width: 1px;
-  height: 20px;
-  background: #44475a;
-  margin: 0 4px;
-  flex: none;
+.dock-status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #6272a4;
 }
 .dock-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 6px;
+  gap: 6px;
+  /* 36px de alvo de toque: a dock virou a única forma de aceitar no mobile,
+     onde não existe Tab. */
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 8px;
   font-size: 12px;
   color: #6272a4;
   transition: background 0.15s, color 0.15s;
@@ -837,12 +842,6 @@ body,
 .dock-btn:disabled {
   opacity: 0.3;
   cursor: default;
-}
-.dock-size {
-  width: 24px;
-  text-align: center;
-  font-size: 12px;
-  color: #f8f8f2;
 }
 .dock-btn-accept:not(:disabled) {
   color: #50fa7b;
@@ -859,8 +858,49 @@ body,
   color: #ff5555;
 }
 
+/* ============ Stepper de tamanho da fonte (menu e drawer) ============ */
+.font-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(68, 71, 90, 0.6);
+  background: rgba(40, 42, 54, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1fa8c;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.font-step:not(:disabled):hover {
+  background: #44475a;
+}
+.font-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.font-step-lg {
+  min-width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+
 /* ============ Responsivo ============ */
 @media (max-width: 640px) {
+  /* No mobile o rótulo de estado espremeria os botões até truncar. Some com
+     ele e deixa Aceitar/Dispensar dividirem a largura toda: é a única forma
+     de aceitar uma sugestão sem teclado. */
+  .dock-status {
+    display: none;
+  }
+  .dock-btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 40px;
+  }
   .sheet-header {
     left: 66px;
     right: 12px;
