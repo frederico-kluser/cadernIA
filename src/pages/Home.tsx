@@ -88,6 +88,7 @@ import {
   classifyUtterance,
   fetchCompletion,
   fetchGuidedSuggestion,
+  looksLikeCommand,
   transcribeAudio,
   validateApiKey,
 } from '@/lib/openai'
@@ -901,12 +902,20 @@ export default function Home() {
             setRecState('idle')
             return
           }
-          const classified = await classifyUtterance(
-            apiKey,
-            model,
-            transcript,
-            textRef.current,
-          )
+          // Pré-filtro: só chama a IA se o transcript parecer um comando.
+          // Isso evita que frases normais sejam confundidas com instruções
+          // e substituam o documento inteiro por engano.
+          let classified: { type: 'transcription' | 'instruction'; payload: string }
+          if (looksLikeCommand(transcript)) {
+            classified = await classifyUtterance(
+              apiKey,
+              model,
+              transcript,
+              textRef.current,
+            )
+          } else {
+            classified = { type: 'transcription', payload: transcript }
+          }
           if (classified.type === 'transcription') {
             recordHistory()
             editorRef.current?.insertAtCursor(classified.payload)
