@@ -27,6 +27,7 @@ interface GhostEditorProps {
   canUndo?: boolean
   canRedo?: boolean
   fontSize: number
+  fontFamily: string
 }
 
 function escapeHtml(s: string): string {
@@ -61,6 +62,7 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
       canUndo,
       canRedo,
       fontSize,
+      fontFamily,
     },
     ref,
   ) {
@@ -137,6 +139,7 @@ const GhostEditor = forwardRef<GhostEditorHandle, GhostEditorProps>(
         style={{
           ['--editor-font-size' as string]: `${fontSize}px`,
           ['--editor-lh' as string]: `${fontSize * 2}px`,
+          ['--editor-font-family' as string]: fontFamily,
         }}
       >
         <div

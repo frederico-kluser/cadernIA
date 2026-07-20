@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Columns2,
   Command,
-  CornerDownLeft,
   Eye,
   FileDown,
   FileText,
@@ -48,6 +47,7 @@ import AskSuggestionDialog from '@/components/AskSuggestionDialog'
 import TourOverlay from '@/components/tour/TourOverlay'
 import ToolbarButton from '@/components/toolbar/ToolbarButton'
 import CommandPalette from '@/components/CommandPalette'
+import Dock, { FONT_OPTIONS, FONT_FAMILY_CSS } from '@/components/Dock'
 import { useTour } from '@/hooks/useTour'
 import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts'
 import { formatShortcut, type Command as AppCommand, type Shortcut } from '@/lib/commands'
@@ -123,6 +123,7 @@ const LS = {
   legacyText: 'noteghost_text',
   model: 'noteghost_model',
   fontSize: 'noteghost_font_size',
+  fontFamily: 'noteghost_font_family',
   githubPat: 'noteghost_github_pat',
   // 'noteghost_tutorial_seen' (legado) agora pertence a lib/tour.ts
 }
@@ -232,6 +233,9 @@ export default function Home() {
   })
   const [fontSize, setFontSize] = useState(
     () => Number(localStorage.getItem(LS.fontSize)) || 17,
+  )
+  const [fontFamily, setFontFamily] = useState(
+    () => localStorage.getItem(LS.fontFamily) ?? FONT_OPTIONS[0].id,
   )
 
   // ---------- OpenAI ----------
@@ -372,6 +376,9 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem(LS.fontSize, String(fontSize))
   }, [fontSize])
+  useEffect(() => {
+    localStorage.setItem(LS.fontFamily, fontFamily)
+  }, [fontFamily])
   useEffect(() => {
     localStorage.setItem(LS.model, model)
   }, [model])
@@ -1636,6 +1643,7 @@ export default function Home() {
                 canUndo={canUndo}
                 canRedo={canRedo}
                 fontSize={fontSize}
+                fontFamily={FONT_FAMILY_CSS[fontFamily]}
               />
             )}
             {mode === 'preview' && <MarkdownPreview source={content} />}
@@ -1658,6 +1666,7 @@ export default function Home() {
                     canUndo={canUndo}
                     canRedo={canRedo}
                     fontSize={fontSize}
+                    fontFamily={FONT_FAMILY_CSS[fontFamily]}
                   />
                 </div>
                 <div className="relative min-w-0">
@@ -1674,6 +1683,17 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* ================= Dock ================= */}
+      <Dock
+        fontSize={fontSize}
+        onFontSizeChange={setFontSize}
+        fontFamily={fontFamily}
+        onFontFamilyChange={setFontFamily}
+        hasSuggestion={suggestion !== null}
+        onAcceptSuggestion={acceptSuggestion}
+        onDismissSuggestion={() => setSuggestion(null)}
+      />
 
       {/* ================= Barra de status ================= */}
       <footer className="flex flex-none items-center gap-3 border-t border-[#44475a] bg-[#21222c] px-3 py-1.5 text-xs text-[#6272a4] sm:px-4">
@@ -1724,24 +1744,6 @@ export default function Home() {
             os comandos
           </button>
         )}
-
-        <div className="flex items-center gap-0.5">
-          <button
-            title="Diminuir fonte"
-            onClick={() => setFontSize((s) => Math.max(13, s - 1))}
-            className="rounded px-1.5 py-0.5 text-[#6272a4] hover:bg-[#44475a] hover:text-[#f8f8f2]"
-          >
-            A−
-          </button>
-          <span className="w-6 text-center">{fontSize}</span>
-          <button
-            title="Aumentar fonte"
-            onClick={() => setFontSize((s) => Math.min(24, s + 1))}
-            className="rounded px-1.5 py-0.5 text-[#6272a4] hover:bg-[#44475a] hover:text-[#f8f8f2]"
-          >
-            A+
-          </button>
-        </div>
 
         <Select value={model} onValueChange={setModel}>
           <SelectTrigger className="hidden h-7 w-40 border-[#44475a] bg-[#282a36] text-xs text-[#8be9fd] sm:flex">
@@ -1813,16 +1815,6 @@ export default function Home() {
           >
             <Wand2 className="h-5 w-5" />
           </button>
-          {/* aceitar a sugestão fantasma: botão próprio, não substitui o Editar com IA */}
-          {suggestion && (
-            <button
-              onClick={() => acceptSuggestion()}
-              aria-label="Aceitar sugestão"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9] text-[#282a36] transition-transform active:scale-95"
-            >
-              <CornerDownLeft className="h-5 w-5" />
-            </button>
-          )}
         </div>
       )}
 
