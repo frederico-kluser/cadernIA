@@ -15,12 +15,15 @@ The user wants to change how voice input is handled, how Whisper transcripts are
 
 ### Architecture
 
-- `lib/openai.ts` owns the two new helpers:
-  - `classifyUtterance(apiKey, model, transcript, context)` sends the transcript to a chat model with a JSON prompt and returns `{ type: 'transcription' | 'instruction', payload: string }` (`lib/openai.ts:135`).
-  - `applyInstruction({ apiKey, model, instruction, fullText, selectedText? })` asks the model to edit either the full document or the selected snippet and returns the replacement text (`lib/openai.ts:175`).
+- `lib/openai.ts` owns the classification pipeline:
+  - `looksLikeCommand(transcript)` — fast heuristic pre-filter BEFORE calling AI. Checks if the transcript starts with command-like verbs (Portuguese imperatives/infinitives) or contains command phrases. Returns false for ≤3-word phrases. **Falso negativo (perder um comando) é seguro: insere como ditado. Falso positivo (classificar ditado como comando) é perigoso: substitui o documento inteiro.**
+  - `classifyUtterance(apiKey, model, transcript, context)` — AI classification, called ONLY when `looksLikeCommand` returns true. Uses a conservative prompt: "SEMPRE prefira transcription a menos que a fala seja CLARAMENTE um comando".
+  - `applyInstruction({ apiKey, model, instruction, fullText, selectedText? })` asks the model to edit either the full document or the selected snippet and returns the replacement text.
 - `pages/Home.tsx` wires them together after `transcribeAudio`:
-  - `transcription` payloads are inserted at the cursor via `editorRef.current?.insertAtCursor`.
-  - `instruction` payloads are applied to the whole document and replace the active project content (`pages/Home.tsx:610`).
+  - If `looksLikeCommand(transcript)` returns false → immediate `{ type: 'transcription' }` (no API call).
+  - If true → calls `classifyUtterance` (AI), then branches:
+    - `transcription` payloads are inserted at the cursor via `editorRef.current?.insertAtCursor`.
+    - `instruction` payloads are applied to the whole document and replace the active project content.
 - `components/AiEditDialog.tsx` provides the UI for typed instructions: a textarea, a "selection only" checkbox, a preview pane, and Apply/Cancel buttons.
 - `components/GhostEditor.tsx` exposes `getSelection()` on its imperative handle so the AI-edit feature can tell whether text is selected (`components/GhostEditor.tsx:15`).
 
@@ -44,6 +47,7 @@ The user wants to change how voice input is handled, how Whisper transcripts are
 
 ### Gotchas
 
+- `looksLikeCommand` is the safety net: most utterances never reach the AI classifier. When changing classification behavior, prefer tightening the heuristic rather than relying on the AI prompt.
 - `classifyUtterance` falls back to `{ type: 'transcription', payload: transcript }` if the model returns malformed JSON.
 - `applyInstruction` returns plain text; the caller is responsible for replacing either the selection or the full document.
 - Keep the model-selector global in `Home.tsx` in sync with the restricted-model detection in `lib/openai.ts` (every `gpt-5*` or `o*` id added there is automatically restricted).
@@ -57,7 +61,7 @@ The user wants to change how voice input is handled, how Whisper transcripts are
 
 ## References
 
-- `src/lib/openai.ts` — `classifyUtterance`, `applyInstruction`, and `chatCompletion`.
+- `src/lib/openai.ts` — `looksLikeCommand`, `classifyUtterance`, `applyInstruction`, and `chatCompletion`.
 - `src/components/AiEditDialog.tsx` — instruction modal UI.
 - `src/pages/Home.tsx` — voice recording stop handler and AI-edit integration.
 

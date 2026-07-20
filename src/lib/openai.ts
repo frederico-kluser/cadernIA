@@ -252,6 +252,65 @@ export interface ClassifyResult {
   payload: string
 }
 
+/**
+ * Verbos imperativos e padrões que indicam comando de edição em português.
+ * Falso negativo é seguro: a frase é inserida como ditado normal.
+ * Falso positivo é perigoso: substitui o documento inteiro.
+ */
+const COMMAND_IMPERATIVES = [
+  'apague', 'apaga', 'remova', 'remove', 'adicione', 'adiciona',
+  'troque', 'troca', 'mude', 'muda', 'converta', 'converte',
+  'formate', 'formata', 'alinhe', 'alinha', 'recorte', 'recorta',
+  'cole', 'cola', 'insira', 'insere', 'escreva', 'escreve',
+  'corrija', 'corrige', 'substitua', 'substitui', 'transforme',
+  'transforma', 'resuma', 'resume', 'expanda', 'expande',
+  'reescreva', 'reescreve', 'traduza', 'traduz', 'reorganize',
+  'reorganiza', 'liste', 'lista', 'enumere', 'enumera',
+  'justifique', 'justifica', 'centralize', 'centraliza',
+  'destaque', 'destaca', 'apagar', 'remover', 'trocar', 'mudar',
+  'adicionar', 'converter', 'formatar', 'alinhar', 'inserir',
+  'escrever', 'corrigir', 'substituir', 'transformar', 'resumir',
+  'expandir', 'reescrever', 'traduzir', 'reorganizar', 'listar',
+  'enumerar', 'justificar', 'centralizar', 'destacar',
+  'recortar', 'colar', 'excluir', 'exclua', 'exclui',
+  'delete', 'deleta', 'deletar',
+]
+
+const COMMAND_PHRASES = [
+  'coloque em', 'coloca em', 'colocar em',
+  'passe para', 'passa para', 'passar para',
+  'faça com que', 'faz com que', 'fazer com que',
+  'quero que você', 'quero que voce',
+  'pode por favor', 'podes por favor', 'poderia por favor',
+  'coloque tudo em', 'coloca tudo em',
+]
+
+/**
+ * Verifica se o transcript PARECE um comando de edição.
+ * Heurística rápida, sem IA: economiza latência e evita falsos positivos
+ * que substituiriam o documento inteiro por engano.
+ */
+export function looksLikeCommand(transcript: string): boolean {
+  const lower = transcript.toLowerCase().trim()
+  if (!lower) return false
+
+  // Frases muito curtas (1-3 palavras) são quase sempre ditado
+  const wordCount = lower.split(/\s+/).length
+  if (wordCount <= 3) return false
+
+  // Começa com verbo imperativo/infinitivo de edição
+  for (const imp of COMMAND_IMPERATIVES) {
+    if (lower.startsWith(imp + ' ')) return true
+  }
+
+  // Contém frase típica de comando
+  for (const phrase of COMMAND_PHRASES) {
+    if (lower.includes(phrase)) return true
+  }
+
+  return false
+}
+
 export async function classifyUtterance(
   apiKey: string,
   model: string,
@@ -260,11 +319,12 @@ export async function classifyUtterance(
 ): Promise<ClassifyResult> {
   const system = [
     'Você é um classificador de comandos de voz para um app de notas.',
-    'O usuário pode estar ditando texto literal OU dando uma instrução para editar o documento.',
-    'Decida:',
-    '- "transcription": se a frase deve ser inserida como texto no cursor.',
-    '- "instruction": se a frase é um comando de edição (ex: apague a ultima frase, troque X por Y, reformule o paragrafo anterior).',
-    'Para "transcription", o payload é o texto a ser transcrito.',
+    'SEMPRE prefira "transcription" a menos que a fala seja CLARAMENTE um comando de edição.',
+    'Regras:',
+    '- "transcription": para QUALQUER texto que o usuário está ditando para ser inserido no cursor. Isso inclui frases descritivas, opiniões, listas, e até frases que MENCIONAM edição (ex: "acho que deveria apagar a última frase" NÃO é um comando — é uma opinião ditada).',
+    '- "instruction": SOMENTE se a frase é um comando explícito com verbo imperativo ou infinitivo de edição (apague, remova, troque, converta, resuma, reescreva, etc.). Exemplos: "apague a última frase", "converta tudo para maiúsculas", "resuma o parágrafo".',
+    'Na dúvida, escolha "transcription".',
+    'Para "transcription", o payload é o texto exato a ser inserido.',
     'Para "instruction", o payload é a instrução de edição, mantida clara e curta.',
     'Responda APENAS com JSON no formato: {"type":"transcription|instruction","payload":"..."}',
   ].join('\n')
