@@ -1578,11 +1578,34 @@ export default function Home() {
           </div>
         </div>
 
-        {/* indicador de página no mobile */}
-        <div className="flex flex-1 items-center justify-end md:hidden">
-          <span className="text-xs text-[#6272a4]">
-            {activeIndex + 1}/{projects.length}
-          </span>
+        {/* seletor de modo no mobile */}
+        <div className="flex flex-1 items-center justify-end gap-1 md:hidden">
+          <button
+            type="button"
+            onClick={() => setMode('edit')}
+            aria-label="Editor"
+            aria-pressed={mode === 'edit'}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+              mode === 'edit'
+                ? 'bg-[#bd93f9] text-[#282a36]'
+                : 'text-[#6272a4] hover:bg-[#44475a] hover:text-[#f8f8f2]'
+            }`}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('preview')}
+            aria-label="Markdown"
+            aria-pressed={mode === 'preview'}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+              mode === 'preview'
+                ? 'bg-[#bd93f9] text-[#282a36]'
+                : 'text-[#6272a4] hover:bg-[#44475a] hover:text-[#f8f8f2]'
+            }`}
+          >
+            <Eye className="h-4 w-4" />
+          </button>
         </div>
       </header>
 
