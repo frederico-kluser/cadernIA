@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Sparkles,
   Trash2,
+  Type,
   Undo2,
   Wand2,
 } from 'lucide-react'
@@ -47,7 +48,13 @@ import AskSuggestionDialog from '@/components/AskSuggestionDialog'
 import TourOverlay from '@/components/tour/TourOverlay'
 import ToolbarButton from '@/components/toolbar/ToolbarButton'
 import CommandPalette from '@/components/CommandPalette'
-import Dock, { FONT_OPTIONS, FONT_FAMILY_CSS } from '@/components/Dock'
+import Dock from '@/components/Dock'
+import {
+  FONT_OPTIONS,
+  FONT_FAMILY_CSS,
+  FONT_SIZE_MIN,
+  FONT_SIZE_MAX,
+} from '@/lib/fonts'
 import { useTour } from '@/hooks/useTour'
 import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts'
 import { formatShortcut, type Command as AppCommand, type Shortcut } from '@/lib/commands'
@@ -63,7 +70,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -1547,6 +1559,72 @@ export default function Home() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-[#44475a]" />
 
+                {/*
+                  Fonte. Saiu da dock inferior — lá ela roubava a largura do
+                  Aceitar no mobile — e passou a viver no menu, junto do resto
+                  das preferências de exibição.
+                */}
+                <DropdownMenuSub>
+                  {/*
+                    `data-[state=open]:bg-accent` do primitivo resolve para um
+                    hsl() inválido neste projeto (não há tokens shadcn), então o
+                    realce de submenu aberto precisa vir em hex literal.
+                  */}
+                  <DropdownMenuSubTrigger
+                    className={`${MI} data-[state=open]:bg-[#44475a] data-[state=open]:text-[#f8f8f2]`}
+                  >
+                    <Type className="mr-2 h-4 w-4 text-[#f1fa8c]" />
+                    Fonte
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-56 border-[#44475a] bg-[#282a36] text-[#f8f8f2]">
+                    <DropdownMenuRadioGroup
+                      value={fontFamily}
+                      onValueChange={setFontFamily}
+                    >
+                      {FONT_OPTIONS.map((f) => (
+                        <DropdownMenuRadioItem
+                          key={f.id}
+                          value={f.id}
+                          className={MI}
+                          style={{ fontFamily: FONT_FAMILY_CSS[f.id] }}
+                        >
+                          {f.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                    <DropdownMenuSeparator className="bg-[#44475a]" />
+                    <div className="flex items-center justify-between px-2 py-1.5 text-xs text-[#6272a4]">
+                      <span>Tamanho</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label="Diminuir fonte"
+                          disabled={fontSize <= FONT_SIZE_MIN}
+                          onClick={() =>
+                            setFontSize((s) => Math.max(FONT_SIZE_MIN, s - 1))
+                          }
+                          className="font-step"
+                        >
+                          A−
+                        </button>
+                        <span className="w-6 text-center tabular-nums text-[#f8f8f2]">
+                          {fontSize}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Aumentar fonte"
+                          disabled={fontSize >= FONT_SIZE_MAX}
+                          onClick={() =>
+                            setFontSize((s) => Math.min(FONT_SIZE_MAX, s + 1))
+                          }
+                          className="font-step"
+                        >
+                          A+
+                        </button>
+                      </div>
+                    </div>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
                 <DropdownMenuItem
                   onClick={() => void toggleFullscreen()}
                   className={MI}
@@ -1686,10 +1764,6 @@ export default function Home() {
 
       {/* ================= Dock ================= */}
       <Dock
-        fontSize={fontSize}
-        onFontSizeChange={setFontSize}
-        fontFamily={fontFamily}
-        onFontFamilyChange={setFontFamily}
         hasSuggestion={suggestion !== null}
         onAcceptSuggestion={acceptSuggestion}
         onDismissSuggestion={() => setSuggestion(null)}
@@ -1960,14 +2034,6 @@ export default function Home() {
                 <Lightbulb className="h-5 w-5 text-[#ff79c6]" />
                 Sugestão
               </button>
-              <button className="drawer-btn" onClick={() => setFontSize((s) => Math.max(13, s - 1))}>
-                <span className="text-base font-bold text-[#f1fa8c]">A−</span>
-                Fonte
-              </button>
-              <button className="drawer-btn" onClick={() => setFontSize((s) => Math.min(24, s + 1))}>
-                <span className="text-base font-bold text-[#f1fa8c]">A+</span>
-                Fonte
-              </button>
             </div>
             <div className="mt-3">
               <Select value={model} onValueChange={setModel}>
@@ -2053,6 +2119,54 @@ export default function Home() {
                 <FileType2 className="h-5 w-5 text-[#8be9fd]" />
                 .txt
               </button>
+            </div>
+          </div>
+
+          {/* fonte */}
+          <div className="drawer-section">
+            <div className="drawer-section-title">Fonte</div>
+            <Select value={fontFamily} onValueChange={setFontFamily}>
+              <SelectTrigger className="h-9 w-full border-[#44475a] bg-[#282a36] text-xs text-[#f1fa8c]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-[#44475a] bg-[#282a36] text-[#f8f8f2]">
+                {FONT_OPTIONS.map((f) => (
+                  <SelectItem
+                    key={f.id}
+                    value={f.id}
+                    className="text-xs focus:bg-[#44475a] focus:text-[#f8f8f2]"
+                    style={{ fontFamily: FONT_FAMILY_CSS[f.id] }}
+                  >
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs text-[#6272a4]">Tamanho</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Diminuir fonte"
+                  disabled={fontSize <= FONT_SIZE_MIN}
+                  onClick={() => setFontSize((s) => Math.max(FONT_SIZE_MIN, s - 1))}
+                  className="font-step font-step-lg"
+                >
+                  A−
+                </button>
+                <span className="w-7 text-center text-sm tabular-nums text-[#f8f8f2]">
+                  {fontSize}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Aumentar fonte"
+                  disabled={fontSize >= FONT_SIZE_MAX}
+                  onClick={() => setFontSize((s) => Math.min(FONT_SIZE_MAX, s + 1))}
+                  className="font-step font-step-lg"
+                >
+                  A+
+                </button>
+              </div>
             </div>
           </div>
 
