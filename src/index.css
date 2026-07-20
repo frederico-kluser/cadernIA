@@ -907,6 +907,7 @@ body,
     left: 18px;
     padding-left: 18px;
     padding-right: 12px;
+    padding-top: 12px;
   }
   .ghost-editor-mirror,
   .ghost-editor-input {
