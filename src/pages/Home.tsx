@@ -32,6 +32,7 @@ import {
   Type,
   Undo2,
   Wand2,
+  X,
 } from 'lucide-react'
 import GhostEditor, {
   staticMirrorHtml,
@@ -1762,12 +1763,19 @@ export default function Home() {
         )}
       </div>
 
-      {/* ================= Dock ================= */}
-      <Dock
-        hasSuggestion={suggestion !== null}
-        onAcceptSuggestion={acceptSuggestion}
-        onDismissSuggestion={() => setSuggestion(null)}
-      />
+      {/*
+        ================= Dock (ponteiro fino) =================
+        No toque quem cumpre este papel é a pílula flutuante logo abaixo, que
+        já traz Aceitar/Dispensar. Renderizar as duas empilharia duas barras
+        inferiores oferecendo a mesma ação.
+      */}
+      {!isTouch && (
+        <Dock
+          hasSuggestion={suggestion !== null}
+          onAcceptSuggestion={acceptSuggestion}
+          onDismissSuggestion={() => setSuggestion(null)}
+        />
+      )}
 
       {/* ================= Barra de status ================= */}
       <footer className="flex flex-none items-center gap-3 border-t border-[#44475a] bg-[#21222c] px-3 py-1.5 text-xs text-[#6272a4] sm:px-4">
@@ -1839,7 +1847,9 @@ export default function Home() {
 
       {/* ================= Ações rápidas flutuantes no mobile (touch) ================= */}
       {isTouch && mode !== 'preview' && (
-        <div className="fade-in-up fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[#44475a] bg-[#21222c]/95 px-3 py-2 shadow-xl shadow-black/40 backdrop-blur-sm">
+        // gap-2, não gap-3: com 6 botões de 40px o gap maior estoura numa
+        // viewport de 320px (6×40 + 5×12 + 24 = 324px).
+        <div className="fade-in-up fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[#44475a] bg-[#21222c]/95 px-3 py-2 shadow-xl shadow-black/40 backdrop-blur-sm">
           <button
             onClick={() =>
               recState === 'recording' ? stopRecording() : void startRecording()
@@ -1888,6 +1898,28 @@ export default function Home() {
             className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bd93f9]/15 text-[#bd93f9] transition-transform active:scale-95"
           >
             <Wand2 className="h-5 w-5" />
+          </button>
+          {/*
+            Aceitar/dispensar ficam sempre montados e apenas desabilitam sem
+            sugestão: no toque não existe Tab nem Esc, então esta é a única
+            forma de resolver o ghost — e um botão que aparece e some faria a
+            pílula pular de largura a cada sugestão.
+          */}
+          <button
+            onClick={acceptSuggestion}
+            aria-label="Aceitar sugestão"
+            disabled={suggestion === null}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#50fa7b]/15 text-[#50fa7b] transition-transform active:scale-95 disabled:opacity-30"
+          >
+            <CheckCircle2 className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => setSuggestion(null)}
+            aria-label="Dispensar sugestão"
+            disabled={suggestion === null}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ff5555]/15 text-[#ff5555] transition-transform active:scale-95 disabled:opacity-30"
+          >
+            <X className="h-5 w-5" />
           </button>
         </div>
       )}

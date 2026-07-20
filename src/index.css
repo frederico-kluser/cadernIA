@@ -890,17 +890,6 @@ body,
 
 /* ============ Responsivo ============ */
 @media (max-width: 640px) {
-  /* No mobile o rótulo de estado espremeria os botões até truncar. Some com
-     ele e deixa Aceitar/Dispensar dividirem a largura toda: é a única forma
-     de aceitar uma sugestão sem teclado. */
-  .dock-status {
-    display: none;
-  }
-  .dock-btn {
-    flex: 1;
-    justify-content: center;
-    min-height: 40px;
-  }
   .sheet-header {
     left: 66px;
     right: 12px;
@@ -918,6 +907,7 @@ body,
     left: 18px;
     padding-left: 18px;
     padding-right: 12px;
+    padding-top: 12px;
   }
   .ghost-editor-mirror,
   .ghost-editor-input {
