@@ -92,7 +92,7 @@ body,
 .page-perspective {
   position: relative;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -102,7 +102,7 @@ body,
 .page-stack {
   position: relative;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -110,7 +110,7 @@ body,
 .page-current {
   position: relative;
   z-index: 1;
-  min-height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #2e303d 0%, #282a36 26%);
@@ -242,6 +242,7 @@ body,
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow-y: auto;
 }
 
 /* folha saindo durante a animação */
