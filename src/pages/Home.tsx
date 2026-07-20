@@ -935,7 +935,9 @@ export default function Home() {
       recorderRef.current = rec
       rec.start()
       setRecState('recording')
-      toast.info('Gravando… toque no microfone novamente para parar.')
+      toast.info('Gravando… toque no microfone novamente para parar.', {
+        position: 'top-center',
+      })
     } catch {
       toast.error('Não foi possível acessar o microfone. Verifique a permissão.')
     }
@@ -1357,7 +1359,13 @@ export default function Home() {
               showLabel={recState === 'recording'}
               shortcut={SC.dictate}
               tone={recState === 'recording' ? '#ff5555' : '#50fa7b'}
-              className={recState === 'recording' ? 'rec-pulse' : undefined}
+              className={
+                recState === 'recording'
+                  ? 'rec-pulse recording-ring'
+                  : recState === 'transcribing'
+                    ? 'transcribing-pulse'
+                    : undefined
+              }
               data-tour="mic"
             />
             {/*
@@ -1733,8 +1741,10 @@ export default function Home() {
             disabled={recState === 'transcribing'}
             className={`flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-95 disabled:opacity-50 ${
               recState === 'recording'
-                ? 'rec-pulse bg-[#ff5555]/20 text-[#ff5555]'
-                : 'bg-[#50fa7b]/15 text-[#50fa7b]'
+                ? 'rec-pulse recording-ring bg-[#ff5555]/20 text-[#ff5555]'
+                : recState === 'transcribing'
+                  ? 'transcribing-pulse bg-[#50fa7b]/15 text-[#50fa7b]'
+                  : 'bg-[#50fa7b]/15 text-[#50fa7b]'
             }`}
           >
             {recState === 'transcribing' ? (
